@@ -4,9 +4,24 @@
 
 TODO: docker instructions
 
+Install the tool binaries:
+
+``` powershell
+.\OneIdentityManager.9.3.1\Setup\InstallManager.Cli.exe `
+    -r E:\OneIdentityManager.9.3.1\  `
+    -m install -fo `
+    -mod QBM QER ADS CPL ATT POL RMB RPS TSB `
+    -i 'C:\Program Files\One Identity\TestInstall' `
+    -d Documentation Client Client\Administration Client\Configuration Client\DevelopmentAndTesting Client\Monitoring
+
+```
+
+TODO: ConfigWizard.exe details
+
+
 ## Tips for interacting with an existing instance
 
-Establish a connection to the database:
+Establish a connection to OneIM database:
 
 ``` csharp
 using VI.DB;
