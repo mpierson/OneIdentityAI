@@ -64,7 +64,7 @@ Important columns in the Person table:
 | UID_PersonHead              | Manager                            | Manager identifier.                                                                                                                                                                                             | varchar   |
 
 
-Create a new identity:
+### Create a new identity
 
 ``` csharp
 IEntity person = await s.Source().CreateNewAsync("Person");
@@ -80,7 +80,7 @@ using (IUnitOfWork uow = s.StartUnitOfWork()) {
 }
 ```
 
-Fetch identities:
+### Fetch identities
 
 ``` csharp
 // fetch using a UID
@@ -108,7 +108,7 @@ foreach (IEntity p in allPersons) {
 }
 ```
 
-Update an identity:
+### Update an identity
 
 ``` csharp
 
@@ -120,7 +120,7 @@ using (IUnitOfWork uow = session.StartUnitOfWork()) {
 
 ```
 
-Delete identities:
+### Delete identities
 
 ``` csharp
 // mark users for delete, triggering deferred delete after 30 days
