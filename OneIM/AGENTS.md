@@ -253,4 +253,154 @@ using (IUnitOfWork uow = session.StartUnitOfWork()) {
 }
 ```
 
+## Managing Organization Structures
+
+Organization structures, including departments, locations, and cost centers are managed similarily in Identity Manager.
+
+Organization structure tables:
+
+- _Department_: organization's departments
+- _Locality_: office locations or region
+- _ProfitCenter_: cost centers or accounting units
+
+All three organization types support the following:
+
+- hierarchichal inheritance, via foreign key to parent, e.g. _Department.UID\_ParentDepartment_
+- assignment of structure to employee via foreign key column, e.g. _Person.UID\_Department_
+- assignment of employees via membership table, e.g. _PersonInDepartment_
+- assignment of entitlements via assignment table, e.g. _DepartmentHasADSGroup_
+- assignment of manager via foreign key column, e.g. _Department.UID\_PersonHead_
+
+
+### Create a new organization object
+
+``` csharp
+
+// create Overdue Accounts department within the Accounting parent
+string UID_ParentDepartment = "xxx"; // ID of Accounting department
+IEntity department = await session.Source().CreateNewAsync("Department");
+await Task.WhenAll(
+    department.PutValueAsync("DepartmentName", "Overdue Accounts"),
+    department.PutValueAsync("Description", "Manage delinquent accounts"),
+    department.PutValueAsync("UID_ParentDepartment", UID_ParentDepartment)  // parent is Accounting
+);
+
+using (IUnitOfWork uow = session.StartUnitOfWork()) {
+    await uow.PutAsync(department);
+    await uow.CommitAsync();
+}
+
+```
+
+### Fetch organization object
+
+``` csharp
+
+// fetch all departments
+IEntityCollection allDepartments = await session.Source().GetCollectionAsync(Query.From("Department").SelectAll()
+);
+foreach (IEntity d in allDepartments) {
+    Console.WriteLine(d.Display);
+}
+
+// fetch using a UID
+string UID_Department = "a60e34fe-e415-43f5-b169-e07ee18340ea";
+IEntity department = await session.Source().GetAsync("Department", UID_Department);
+Console.WriteLine(department.Display);
+
+
+// fetch using SQL criteria
+var q = Query.From("Department").Where(p => p.Column("DepartmentName") == "Accounting");
+int count = await session.Source().GetCountAsync(q.SelectCount());
+Console.WriteLine(count);
+
+IEntityCollection departments = await session.Source().GetCollectionAsync(q.SelectAll());
+foreach (IEntity d in departments) {
+    Console.WriteLine(d.Display);
+}
+
+```
+
+### Manage employee assignment
+
+Employees can be assigned to a primary structure, e.g. a primary location where the employee typically works, plus one or more secondary assignments, e.g. additional locations where the employee has privileges.
+
+``` csharp
+
+// update primary department of employees
+string UID_Department_Accounting = "xxx";
+var q = Query.From("Person").Where(p => p.Column("PersonalTitle") == "Accountant");
+IEntityCollection accountants = await session.Source().GetCollectionAsync(
+        q.SelectAll(), EntityCollectionLoadType.Bulk);
+using (IUnitOfWork uow = session.StartUnitOfWork()) {
+    foreach (IEntity a in accountants) {
+        Console.WriteLine(a.Display);
+        await p.PutValueAsync("UID_Department", UID_Department_Accounting);
+        await uow.PutAsync(p);
+    }
+    await uow.CommitAsync();
+}
+
+
+// add employees to a secondary department
+string UID_Department_Compliance = "xxx";
+q = Query.From("Person").Where(p => p.Column("LastName") == "Van Damme");
+IEntityCollection complianceOfficer = await session.Source().GetCollectionAsync(
+        q.SelectAll(), EntityCollectionLoadType.Bulk);
+using (IUnitOfWork uow = session.StartUnitOfWork()) {
+    foreach (IEntity p in complianceOfficer) {
+        Console.WriteLine(p.Display);
+
+        IEntity pid = await session.Source().CreateNewAsync("PersonInDepartment");
+        await pid.PutValueAsync("UID_Department", UID_Department_Compliance);
+        await pid.PutValueAsync("UID_Person", p.GetValue("UID_Person"));
+        await uow.PutAsync(pid);
+    }
+    await uow.CommitAsync();
+}
+
+```
+
+
+### Schema
+
+Key columns for organization structure tables:
+
+#### Department
+
+Table name: Department
+
+| Column  | Description | Notes   | Type       |
+|-----------------------------|------------------------------------|-----------------------------------------------------|--------|
+| DepartmentName              | Department name         | Department's unique name.   | nvarchar  |
+| Description                 | Description                        |                                                                                                                                                                                            | nvarchar  |
+| FullPath                 | Full name of department, including parent hiearchy                        |                                                                                                                                                                                            | nvarchar  |
+| UID\_Department      | Unique identifier |  | varchar |
+| UID\_ParentDepartment      | Unique identifier of parent department | Can be null, if object is at top of heriarcy  | varchar |
+
+
+#### Location
+
+Table name: Locality
+
+| Column  | Description | Notes   | Type       |
+|-----------------------------|------------------------------------|-----------------------------------------------------|--------|
+| Ident\_Locality              | Location name         | Location's unique name.   | nvarchar  |
+| Description                 | Description                        |                                                                                                                                                                                            | nvarchar  |
+| FullPath                 | Full name of Location, including parent hiearchy                        |                                                                                                                                                                                            | nvarchar  |
+| UID\_Locality      | Unique identifier |  | varchar |
+| UID\_ParentLocality      | Unique identifier of parent Location | Can be null, if object is at top of heriarcy  | varchar |
+
+
+#### Cost Center
+
+Table name: ProfitCenter
+
+| Column  | Description | Notes   | Type       |
+|-----------------------------|------------------------------------|-----------------------------------------------------|--------|
+| AccountNumber              | Accounting identifier of cost center    | Cost center's unique name.   | nvarchar  |
+| Description                 | Description                        |                                                                                                                                                                                            | nvarchar  |
+| FullPath                 | Full name of Profit Center, including parent hiearchy                        |                                                                                                                                                                                            | nvarchar  |
+| UID\_ProfitCenter      | Unique identifier |  | varchar |
+| UID\_ParentProfitCenter      | Unique identifier of parent ProfitCenter | Can be null, if object is at top of heriarcy  | varchar |
 
