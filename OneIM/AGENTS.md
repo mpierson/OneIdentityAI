@@ -1,22 +1,16 @@
 # AI Agent instructions for Identity Manager
 
-## Tips for building an Identity Manager environment
+## Environment and Dependencies
 
-TODO: docker instructions
+Requires .Net 8 SDK
 
-Install the tool binaries:
+Microsoft SQL Server driver, e.g. Microsoft.Data.SqlClient.dll
 
-``` powershell
-.\OneIdentityManager.9.3.1\Setup\InstallManager.Cli.exe `
-    -r E:\OneIdentityManager.9.3.1\  `
-    -m install -fo `
-    -mod QBM QER ADS CPL ATT POL RMB RPS TSB `
-    -i 'C:\Program Files\One Identity\TestInstall' `
-    -d Documentation Client Client\Administration Client\Configuration Client\DevelopmentAndTesting Client\Monitoring
+The following Identity Manager DLLs are typically required:
 
-```
-
-TODO: ConfigWizard.exe details
+- VI.Base.dll
+- VI.DB.dll
+- \[\*\].Customizer.dll (QER.Customizer.dll, CPL.Customizer.dll, etc.)
 
 
 ## Tips for interacting with an existing instance
@@ -374,22 +368,85 @@ Table name: Department
 |-----------------------------|------------------------------------|-----------------------------------------------------|--------|
 | DepartmentName              | Department name         | Department's unique name.   | nvarchar  |
 | Description                 | Description                        |                                                                                                                                                                                            | nvarchar  |
-| FullPath                 | Full name of department, including parent hiearchy                        |                                                                                                                                                                                            | nvarchar  |
+| FullPath                 | Full name of department, including parent hierarchy                        |                                                                                                                                                                                            | nvarchar  |
 | UID\_Department      | Unique identifier |  | varchar |
 | UID\_ParentDepartment      | Unique identifier of parent department | Can be null, if object is at top of heriarcy  | varchar |
 
 
 #### Location
 
+Location records should include the following fields:
+
+- Ident\_Locality : name of location
+- City
+- UID\_Country : country
+- UID_\_State : state
+
+
 Table name: Locality
 
 | Column  | Description | Notes   | Type       |
 |-----------------------------|------------------------------------|-----------------------------------------------------|--------|
-| Ident\_Locality              | Location name         | Location's unique name.   | nvarchar  |
-| Description                 | Description                        |                                                                                                                                                                                            | nvarchar  |
-| FullPath                 | Full name of Location, including parent hiearchy                        |                                                                                                                                                                                            | nvarchar  |
+| Ident\_Locality     | Location name         | Location's unique name.   | nvarchar  |
+| Description         | Description       |                               | nvarchar  |
+| FullPath            | Full name of Location, including parent hierarchy |     | nvarchar  |
+| City                | City of location |   | varchar |
 | UID\_Locality      | Unique identifier |  | varchar |
-| UID\_ParentLocality      | Unique identifier of parent Location | Can be null, if object is at top of heriarcy  | varchar |
+| UID\_ParentLocality | Unique identifier of parent Location | Can be null, if object is at top of heriarcy  | varchar |
+| UID\_DialogCountry  | Unique identifier of country | DialogCountry table  | varchar |
+| UID\_DialogState  | Unique identifier of state or province | DialogState table, which includes UID\_Country as key  | varchar |
+
+*Note*: the DialogCountry table includes the following fields:
+
+- _UID\_DialogCountry_ unique identifier
+- _CountryName_ common name of country
+- _ISO3166\_2_ two letter ISO 3166 designated country code \([list](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)\)
+- _ISO3166\_3_ three letter ISO 3166 designated country code \([list](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3)\)
+
+
+Sample code to insert a new location record, including state and country foreign keys:
+
+```csharp
+
+// fetch country record for our location (Canada)
+var q = Query.From("DialogCountry").Where(c => c.Column("CountryName") == "Canada");
+int count = await session.Source().GetCountAsync(q.SelectCount());
+Console.WriteLine(count);
+
+IEntityCollection countries = await session.Source().GetCollectionAsync(q.SelectAll());
+IEntity canada = countries.First();
+
+
+
+// fetch province record for our location (Ontario)
+q = Query.From("DialogState").Where(
+        p => p.Column("UID_DialogCountry") == canada.GetValue("UID_DialogCountry")
+             &&  p.Column("Ident_DialogState") == "Ontario");
+count = await session.Source().GetCountAsync(q.SelectCount());
+
+IEntityCollection provinces = await session.Source().GetCollectionAsync(q.SelectAll());
+IEntity ontario = provinces.First();
+
+
+
+// insert Locality record
+IEntity toronto = await session.Source().CreateNewAsync("Locality");
+await Task.WhenAll(
+        toronto.PutValueAsync("Ident_Locality", "Toronto - HQ"),
+        toronto.PutValueAsync("Description", "Toronto headquarters"),
+        toronto.PutValueAsync("City", "Toronto"),
+        toronto.PutValueAsync("UID_DialogCountry", canada.GetValue("UID_DialogCountry")),
+        toronto.PutValueAsync("UID_DialogState", ontario.GetValue("UID_DialogState"))
+);
+
+using (IUnitOfWork uow = session.StartUnitOfWork()) {
+    await uow.PutAsync(toronto);
+    await uow.CommitAsync();
+}
+
+```
+
+
 
 
 #### Cost Center
@@ -400,7 +457,120 @@ Table name: ProfitCenter
 |-----------------------------|------------------------------------|-----------------------------------------------------|--------|
 | AccountNumber              | Accounting identifier of cost center    | Cost center's unique name.   | nvarchar  |
 | Description                 | Description                        |                                                                                                                                                                                            | nvarchar  |
-| FullPath                 | Full name of Profit Center, including parent hiearchy                        |                                                                                                                                                                                            | nvarchar  |
+| FullPath                 | Full name of Profit Center, including parent hierarchy                        |                                                                                                                                                                                            | nvarchar  |
 | UID\_ProfitCenter      | Unique identifier |  | varchar |
 | UID\_ParentProfitCenter      | Unique identifier of parent ProfitCenter | Can be null, if object is at top of heriarcy  | varchar |
 
+
+
+
+## Business Roles
+
+
+Business roles provide [RBAC](https://en.wikipedia.org/wiki/Role-based_access_control) for identities.  The _Org_ table is used to store business roles in Identity Manager.
+
+Relevent schema tables:
+
+- _Org_ : primary table 
+- _OrgRoot_ : role class
+- _PersonInOrg_ : user's membership in a role
+- _OrgHas\*_ : entitlement assignment to role, e.g. _OrgHasADSGroup_ 
+- _DynamicGroup_ : attribute-based assignment of users to role
+
+The role class (_OrgRoot_) defines role behaviour, e.g. are entitlements inherited top-down or bottom-up, and is required for all business roles.  Roles are assigned to users via the _PersonInOrg_ table, and entitlements are associated with roles via the OrgHas* tables. Each entitlement type will have an OrgHas* table for role assignment, e.g. Active Directory groups are assigned to roles via the _OrgHasADSGroup_ table.  The _DynamicGroup_ table is used to define attribute-based rules for role assignment, e.g. assignment of a role based on a user's job title.
+
+### Dependencies
+
+The following _additional_ Identity Manager DLLs are typically required:
+
+- RMB.Customizer.dll
+
+
+
+### Schema
+
+Table name: Key attributes of Org table
+
+| Column  | Description | Notes   | Type       |
+|-----------------------------|------------------------------------|-----------------------------------------------------|--------|
+| Ident\_Org     | Role name         | Role's unique name.   | nvarchar  |
+| Description    | Description                        |              | nvarchar  |
+| FullPath       | Full name of role, including role class and parent hierarchy  | Read-only   | nvarchar  |
+| ShortName      | Abbreviated name                       |              | nvarchar  |
+| UID\_Org       | Unique identifier |  | varchar |
+| UID\_ParentOrg | Unique identifier of parent role | Can be null, if object is at top of hierarchy  | varchar |
+| UID\_PersonHead | Unique identifier of role manager |  | varchar |
+
+
+
+
+
+
+### Create a new role class
+
+A role class defines two aspects of roles in the class:
+
+- are entitlements inherited top-down or bottom-up
+- what object types can be assigned to the role
+
+The assignment types for role classes are stored in the _OrgRootAssign_ table.  All necessary _OrgRootAssign_ records are automatically created for _OrgRoot_ records.  The _IsAssignmentAllowed_ and _IsDirectAssignmentAllowed_ flags in the _OrgRootAssign_ table indicate if the object type can be assigned in general and assigned directly to roles of the given class.  Assignment target values come from the _BaseTreeAssign_ table, e.g. _QER-AsgnBT-Person_, _ADS-AsgnBT-ADSGroup_ .
+
+
+```csharp
+
+IEntity roleClass = await session.Source().CreateNewAsync("OrgRoot");
+await Task.WhenAll(
+    roleClass.PutValueAsync("Ident_OrgRoot", "My Role Class"),
+    roleClass.PutValueAsync("Description", "Sample role class"),
+    roleClass.PutValueAsync("IsTopDown", true),
+);
+
+using (IUnitOfWork uow = session.StartUnitOfWork()) {
+    await uow.PutAsync(roleClass);
+    await uow.CommitAsync();
+}
+
+
+// define what objects can be assigned to the role, using OrgRootAssign table
+var q = Query.From("OrgRootAssign").Where(a => a.Column("UID_OrgRoot") == roleClass.GetValue("UID_OrgRoot"));
+IEntityCollection assignments = await session.Source().GetCollectionAsync(
+        q.SelectAll(), EntityCollectionLoadType.Bulk);
+using (IUnitOfWork uow = session.StartUnitOfWork()) {
+    foreach (IEntity a in assignments) {
+
+        string assignTarget = a.GetValue("UID_BaseTreeAssign");
+        Console.WriteLine(assignTarget);
+
+        if ( assignTarget == "QER-AsgnBT-Person" ) {
+            await a.PutValueAsync("IsAssignmentAllowed", true);
+        }
+        if ( assignTarget == "ADS-AsgnBT-ADSGroup" ) {
+            await a.PutValueAsync("IsAssignmentAllowed", true);
+            await a.PutValueAsync("IsDirectAssignmentAllowed", true);
+        }
+        await uow.PutAsync(a);
+    }
+    await uow.CommitAsync();
+}
+
+```
+
+
+### Create a new business role
+
+Role name and class are required properties.
+
+```csharp
+
+IEntity role = await session.Source().CreateNewAsync("Org");
+await Task.WhenAll(
+    role.PutValueAsync("Ident_Org", "My Role"),
+    role.PutValueAsync("Description", "Sample role"),
+    role.PutValueAsync("UID_OrgRoot", roleClass.GetValue("UID_OrgRoot"))
+);
+
+using (IUnitOfWork uow = session.StartUnitOfWork()) {
+    await uow.PutAsync(role);
+    await uow.CommitAsync();
+}
+```
