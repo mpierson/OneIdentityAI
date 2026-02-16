@@ -1,0 +1,315 @@
+package cmd
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/spf13/cobra"
+
+	"pso.oneidentity.com/sped/oneim"
+	"pso.oneidentity.com/sped/oneim/dbx"
+)
+
+type DPRSystemConnection struct {
+	oneim.Specials
+	Displayable
+	UID_DPRSystemConnection       string
+	UID_DPRShell                  string
+	UID_DPRSchema                 string
+	UID_QBMClrType                string
+	UID_ConnectorQBMClrType       string
+	UID_ParamDescriptorQBMClrType *string `mapstructure:",omitempty"`
+	UID_DPRSystemScope            *string
+	UID_DPRSystemScopeForRefer    *string
+	ConnectionParameter           string
+	ConnectRetryCount             int
+	ConnectRetryDelay             int
+	DefaultDisplay                *string
+	IsReadOnly                    bool
+	JournalLogFailedObjectChanges bool
+	JournalLogObjectChanges       bool
+	JournalLogPropertyChanges     bool
+	JournalMessageContexts        *string
+	WriteJournal                  bool
+	Schema                        string `mapstructure:",omitempty"`
+	SystemScope                   string `mapstructure:",omitempty"`
+	SystemScopeForRefer           string `mapstructure:",omitempty"`
+}
+
+var ConnectionCmd = CreateBaseCommand(
+	"connection",
+	"sync Connection commands",
+	`View and update synchronization Connection records (DPRSystemConnection).`,
+	showConnections,
+)
+
+var ShowConnectionCmd = CreateShowCommand(
+	"show details of one synchronization Connection",
+	`View sync Connection detail (DPRSystemConnection).`,
+	[]string{"shell"},
+	showConnections,
+)
+
+func showConnections(c *cobra.Command, db *sqlx.DB) error {
+
+	shellId, _ := c.Flags().GetString("shell")
+	if len(shellId) == 0 {
+		return errors.New("shell id required")
+	}
+
+	id, _ := c.Flags().GetString("id")
+
+	wc := fmt.Sprintf(`UID_DPRShell='%s'`, shellId)
+	if len(id) > 0 {
+		wc = wc + fmt.Sprintf(` AND UID_DPRSystemConnection='%s'`, id)
+	}
+
+	return ShowDPRObjects[DPRSystemConnection](db, wc, fillConnectionData)
+}
+
+func fillConnectionData(db *sqlx.DB, t *DPRSystemConnection) error {
+
+	t.Schema, _ = GetForeignDisplay(db, "DPRSchema", t.UID_DPRSchema)
+	if t.UID_DPRSystemScope != nil {
+		t.SystemScope, _ = GetForeignDisplay(db, "DPRSystemScope", *t.UID_DPRSystemScope)
+	}
+	if t.UID_DPRSystemScopeForRefer != nil {
+		t.SystemScopeForRefer, _ = GetForeignDisplay(db, "DPRSystemScope", *t.UID_DPRSystemScopeForRefer)
+	}
+
+	return nil
+}
+
+var InsertConnectionCmd = CreateInsertCommand(
+	"create a new synchronization Connection",
+	`Create a new sync Connection (DPRSystemConnection).`,
+	[]string{"shell", "name", "schema-id"},
+	insertConnection,
+)
+
+func insertConnection(c *cobra.Command, db *sqlx.DB) error {
+	return ExecInsertCommand[DPRSystemConnection](c, db, "VI.Projector.Connection.SystemConnection", newConnection_cmd)
+}
+
+func newConnection_cmd(
+	c *cobra.Command, db *sqlx.DB,
+	id string, objectKey string, name string,
+	clrId string,
+) (*DPRSystemConnection, error) {
+
+	schemaId, err := GetStructId_MustExist[DPRSchema](c, "schema-id", db)
+	if err != nil {
+		return nil, err
+	}
+
+	shellId, err := GetStructId_MustExist[DPRShell](c, "shell", db)
+	if err != nil {
+		return nil, err
+	}
+
+	conType, _ := c.Flags().GetString("type")
+	if len(conType) == 0 {
+		return nil, errors.New("Missing connection type")
+	}
+
+	var conClrType string
+	var paramClrType string
+	if conType == "MainConnection" {
+		conClrType = "VI.Projector.Database.DatabaseConnectorDescriptor"
+		paramClrType = "VI.Projector.Database.DatabaseConnectionParameterDescriptor"
+	} else {
+		conClrType, _ = c.Flags().GetString("connector-type")
+		if len(conClrType) == 0 {
+			return nil, errors.New("missing connector CLR type")
+		}
+	}
+
+	// connection string is optional?
+	conString, _ := c.Flags().GetString("connection-string")
+
+	return newConnection(db,
+		shellId, schemaId,
+		id, objectKey, name,
+		conType, conClrType,
+		conString, paramClrType,
+		clrId)
+}
+
+func newConnection(
+	db *sqlx.DB,
+	shellId string, schemaId string,
+	id string, objectKey string, name string,
+	conType string, conClrType string,
+	conParameter string, paramClrType string,
+	clrId string,
+) (*DPRSystemConnection, error) {
+
+	shellName, err := dbx.GetTableValue(db, "DPRShell", "DisplayName", fmt.Sprintf(`UID_DPRShell='%s'`, shellId))
+	if err != nil {
+		return nil, err
+	}
+
+	displayName := fmt.Sprintf(`%s - %s`, shellName, name)
+
+	connectorClrId, err := GetClrId(db, conClrType)
+	if err != nil {
+		return nil, err
+	}
+
+	var paramClrId string
+	if len(paramClrType) > 0 {
+		paramClrId, err = GetClrId(db, paramClrType)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	t := DPRSystemConnection{
+		UID_DPRSystemConnection: id,
+		UID_DPRShell:            shellId,
+		UID_QBMClrType:          clrId,
+		UID_ConnectorQBMClrType: connectorClrId,
+		UID_DPRSchema:           schemaId,
+		Specials: oneim.Specials{
+			XObjectKey: objectKey,
+		},
+		DefaultDisplay: &name,
+		Displayable: Displayable{
+			DisplayNameQualified: &displayName,
+			Name:                 &conType,
+		},
+	}
+	if len(conParameter) > 0 {
+		t.ConnectionParameter = conParameter
+	}
+	if len(paramClrId) > 0 {
+		t.UID_ParamDescriptorQBMClrType = &paramClrId
+	}
+
+	return &t, nil
+}
+
+var InsertOneIMConnectionCmd = CreateBaseCommand(
+	"insert-oneim-connection",
+	"create a new synchronization Connection for OneIM",
+	`Create a new sync connection for Identity Manager (DPRSystemConnection).`,
+	insertOneIMConnection,
+)
+
+func insertOneIMConnection(c *cobra.Command, db *sqlx.DB) error {
+	return ExecInsertCommand[DPRSystemConnection](c, db, "VI.Projector.Connection.SystemConnection", newOneIMConnection)
+}
+
+func newOneIMConnection(
+	c *cobra.Command, db *sqlx.DB,
+	id string, objectKey string, name string,
+	clrId string,
+) (*DPRSystemConnection, error) {
+
+	// TODO: check for existing OneIM connection
+
+	shellId, err := GetStructId_MustExist[DPRShell](c, "shell", db)
+	if err != nil {
+		return nil, err
+	}
+
+	// connection string is optional?
+	conString, _ := c.Flags().GetString("connection-string")
+
+	// lookup primary OneIM schema in given shell
+	schema, err := GetOneIMSchema(db, shellId)
+	if err != nil {
+		return nil, err
+	}
+
+	return newConnection(db,
+		shellId, schema.UID_DPRSchema,
+		id, objectKey, *schema.Name,
+		"MainConnection", "VI.Projector.Database.DatabaseConnectorDescriptor",
+		conString, "VI.Projector.Database.DatabaseConnectionParameterDescriptor",
+		clrId)
+}
+
+var InsertTargetSystemConnectionCmd = CreateBaseCommand(
+	"insert-target-system-connection",
+	"create a new synchronization Connection for target system",
+	`Create a new sync connection for a target system (DPRSystemConnection).`,
+	insertTargetSystemConnection,
+)
+
+func insertTargetSystemConnection(c *cobra.Command, db *sqlx.DB) error {
+	return ExecInsertCommand[DPRSystemConnection](c, db, "VI.Projector.Connection.SystemConnection", newTargetSystemConnection)
+}
+
+func newTargetSystemConnection(
+	c *cobra.Command, db *sqlx.DB,
+	id string, objectKey string, name string,
+	clrId string,
+) (*DPRSystemConnection, error) {
+
+	// TODO: check for existing OneIM connection
+
+	shellId, err := GetStructId_MustExist[DPRShell](c, "shell", db)
+	if err != nil {
+		return nil, err
+	}
+
+	// lookup target system schema
+	schema, err := GetTargetSystemSchema(db, shellId)
+	if err != nil {
+		return nil, err
+	}
+
+	connectorType, _ := c.Flags().GetString("connector-type")
+	if len(connectorType) == 0 {
+		return nil, errors.New("missing connector CLR type")
+	}
+
+	// connection string is optional?
+	conString, _ := c.Flags().GetString("connection-string")
+	conStringType, _ := c.Flags().GetString("connection-string-type")
+
+	return newConnection(db,
+		shellId, schema.UID_DPRSchema,
+		id, objectKey, *schema.Name,
+		"ConnectedSystemConnection", connectorType,
+		conString, conStringType,
+		clrId)
+}
+
+var UpdateConnectionCmd = CreateUpdateCommand(
+	"update an existing connection",
+	`Update attributes of a sync connection (DPRSystemConnection).`,
+	updateConnection,
+)
+
+func updateConnection(c *cobra.Command, db *sqlx.DB) error {
+	return ExecUpdateCommand[DPRSystemConnection](c, db)
+}
+
+func GetAllConnections(db *sqlx.DB, shellId string) ([]DPRSystemConnection, error) {
+	if !IsValidIdOrName(shellId) {
+		return nil, errors.New("invalid shell id")
+	}
+	wc := fmt.Sprintf(`UID_DPRShell='%s'`, shellId)
+	return dbx.GetStructData[DPRSystemConnection](db, "DPRSystemConnection", wc)
+}
+
+func GetDefaultTargetSystemConnection(db *sqlx.DB, shellId string) (*DPRSystemConnection, error) {
+	if !IsValidIdOrName(shellId) {
+		return nil, errors.New("invalid shell id")
+	}
+
+	ts, err := GetAllConnections(db, shellId)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range ts {
+		if *t.Name == "ConnectedSystemConnection" {
+			return &t, nil
+		}
+	}
+
+	return nil, nil
+}
