@@ -291,6 +291,7 @@ func addDefaultClassToSchemaType(c *cobra.Command, db *sqlx.DB) error {
 	} else {
 		clrName = "VI.Projector.Schema.GenericSchemaClass"
 	}
+
 	clrId, err := GetClrId(db, clrName)
 	if err != nil {
 		return err
@@ -301,6 +302,8 @@ func addDefaultClassToSchemaType(c *cobra.Command, db *sqlx.DB) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Println(id)
 
 	return nil
 }

@@ -362,6 +362,8 @@
                           then 'Int'
                           else if ($csharp-type = 'double' )
                           then 'String'
+                          else if ($csharp-type = 'bool' )
+                          then 'Bool'
                           else $csharp-type 
         " />
  </xsl:function>

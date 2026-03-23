@@ -1,4 +1,4 @@
-# Instructions For Custom Identity Manager Connectors
+# Creating Custom Identity Manager Connectors
 
 Custom Identity Manager connectors are used to integrate Identity Manager with identity sources (e.g. HR system) or systems that require provisioning of identity information (target systems).
 
@@ -10,12 +10,19 @@ There are typically three components of a custom connector:
 
 Additional details of Identity Manager custom connectors [here](https://github.com/OneIdentity/IdentityManager.PoSh-Connector-Guide/blob/main/README.md).
 
+Once the shared library, connector definition, and synchronization project are complete, the following manual steps will be required:
 
-## Connector Shared Libary
+- copy the shared library, connector definition, and any dependencies to the target Identity Manager job server
+- update the synchronization project variables to reflect the location of the shared library and connector definition files
 
-The custom connector library should include a public class that implements _ois.oneim.ConnectorBase.ConnectorBase_, as defined in [ConnectorBase.cs](ConnectorBase.cs).
 
-### Connector Configuration
+# Connector Shared Libary
+
+The custom connector library should include a public class that implements _ois.oneim.ConnectorBase.ConnectorBase.ConnectorInterface_, as defined in [ConnectorBase.cs](ConnectorBase.cs).
+
+For best results, a single, .Net 8 compliant DLL should be created.
+
+## Connector Configuration
 
 The _Configure_ method is used to setup target system connection details.  Configuration parameters are passed in key/value pairs.   The connector's static _ConfigParameters()_ should return metadata for the parameters to be passed to the _Configure()_ method.
 
@@ -36,7 +43,11 @@ public static ParameterDef[] ConfigParameters()
 
 ```
 
-### Data Types
+**Note**: individual parameters are preferred over multi-value combined parameters, e.g. use host, port, database name, instead of a single connection string.
+
+
+
+## Data Types
 
 For each data type in the connected system to be exposed to Identity Manager, the connector class should implement methods to support CRUD operations in the target system:
 
@@ -104,30 +115,59 @@ The metadata for this example _Employee_ class would be:
        };
 ```
 
-## Connector Definition File
+
+
+# Connector Definition File
 
 An XML connector definition file is used by Identity Manager to determine how to utilize functionality in the connector library.
 
 The [Connector Guide](https://github.com/OneIdentity/IdentityManager.PoSh-Connector-Guide/blob/main/README.md#the-powershell-connector-xml-definition-format) describes the format of the connector definition file in detail.
 
-A two-step process is available to automatically generate the connector definition file:
+An XSL template is available that will convert library metadata to a connector definition file.
 
-1. use the _cme_ tool (Connector Metadata Extractor) to extract metadata from the connector library, in XML format
-2. apply the _MetadataToConnectorDefinition.xsl_ stylesheet to convert the connector metadata to a connector definition file using a XSLT v3 processor
+Sample library metadata, in XML format:
 
-Usage of the _cme_ tool:
+``` xml
 
-``` bash
-> dotnet run cme.dll
-Usage: cme <fully qualified class name> <absolute path to connector library DLL> <connector description>
+<?xml version="1.0" encoding="utf-8"?>
+<Connector className="MyConnector" namespace="ois.oneim">
+  <Description>Sample connector library for xyz target system</Description>
+
+  <!-- Configuration section includes one Parameter element for each parameter to be passed to the Configure method of the connector.  e.g. host name, service account credentials.
+  <Configuration>
+    <Parameter name="connected_host" type="string">
+      <Description>Hostname or IP address of connected system</Description>
+    </Parameter>
+    ...
+  </Configuration>
+
+  <!-- 
+     A Class element is required for each data type in the connected system that is supported by the connector. The _listMethod_, _createMethod_, _getMethod_, _updateMethod_, and _deleteMethod_ attributes indicate the name of the corresponding method in the connector. 
+     Each attribute of the data type is represented by an Attribute element, including XML attributes for the name, type, and if a value is required by the connected system.  If the attribute must not be empty when creating or updating the connected system, the XML attribute _required_ should be _True_.
+  -->
+  
+  <Classes>
+    <Class name="ois.oneim.frappe.Employee"
+           createMethod="CreateEmployee"
+           listMethod="GetAllEmployees"
+           getMethod="GetEmployee"
+           updateMethod="UpdateEmployee"
+           deleteMethod="DeleteEmployee">
+      <Attribute name="Id" type="string" required="False" />
+      ...
+    </Class>
+  </Classes>
+</Connector>
 ```
 
-
-Use the following command to generate the definition file in a Linux shell:
+Use an XSLT v3 processor to convert the connector's XML metadata to a connector definition file, using the provided _MetadataToConnectorDefinition.xsl_ template.
 
 ``` bash
-dotnet run cme.dll ois.oneim.sample.SampleConnector \
-                   /home/one_identity/sample_connector/SampleConnector.dll \
-                   "Sample connector for demonstration only" |  \
-    saxonhe-xslt -xsl:MetadataToConnectorDefinition.xsl -s:- > connector-definition.xml
+    cat connector-metadata | saxonhe-xslt -xsl:MetadataToConnectorDefinition.xsl -s:- > connector-definition.xml
 ```
+
+# Synchronization Project
+
+The SPEd utility is used to create and manage synchronization projects.
+
+

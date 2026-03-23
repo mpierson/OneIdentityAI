@@ -211,8 +211,6 @@ func GetWorkflowByName(db *sqlx.DB, shellId string, wfName string) (*DPRProjecti
 		return nil, err
 	}
 
-	fmt.Println(ts)
-
 	if len(ts) == 0 {
 		return nil, nil
 	} else if len(ts) > 1 {

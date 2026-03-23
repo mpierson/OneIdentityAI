@@ -44,7 +44,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config-file", "C", "", "optional database config file (host, port, database, user, password)")
 	rootCmd.PersistentFlags().StringP("user", "u", "", "database user name")
-	rootCmd.PersistentFlags().StringP("password", "p", "", "database password (consider using the SPED_PASSSWORD env variable instead)")
+	rootCmd.PersistentFlags().StringP("password", "p", "", "database password (consider using the SPED_PASSWORD env variable instead)")
 	rootCmd.PersistentFlags().StringP("host", "H", "", "database host")
 	rootCmd.PersistentFlags().IntP("port", "P", 1433, "database port")
 	rootCmd.PersistentFlags().StringP("database", "d", "", "database name")
