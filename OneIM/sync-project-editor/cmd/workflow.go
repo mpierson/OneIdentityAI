@@ -17,6 +17,7 @@ type DPRProjectionConfig struct {
 	UID_DPRProjectionConfig string
 	UID_DPRShell            string
 	UID_QBMClrType          string
+	ProjectionDirection     *string
 	Steps                   []string `mapstructure:",omitzero"`
 	Connections             []string `mapstructure:",omitzero"`
 }
@@ -78,7 +79,7 @@ func fillWorkflowData(db *sqlx.DB, t *DPRProjectionConfig) error {
 var InsertWorkflowCmd = CreateInsertCommand(
 	"create a new synchronization workflow",
 	`Create a new sync workflow (DPRProjectionConfig).`,
-	[]string{"shell", "name"},
+	[]string{"shell", "name", "direction"},
 	insertWorkflow,
 )
 
@@ -103,6 +104,11 @@ func newWorkflow(
 
 	displayName := fmt.Sprintf(`%s - %s`, shellName, name)
 
+	direction, err := c.Flags().GetString("direction")
+	if err != nil {
+		return nil, err
+	}
+
 	t := DPRProjectionConfig{
 		UID_DPRProjectionConfig: id,
 		UID_DPRShell:            shellId,
@@ -113,6 +119,10 @@ func newWorkflow(
 			DisplayName:          &name,
 			DisplayNameQualified: &displayName,
 		},
+	}
+
+	if len(direction) > 0 {
+		t.ProjectionDirection = &direction
 	}
 
 	return &t, nil

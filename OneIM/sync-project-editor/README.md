@@ -4,19 +4,28 @@ For AI agents (or humans), SPEd is a command line tool capable of viewing, inser
 
 **Warning**: do not use in production environments. This tool does not use Identity Manager system accounts and by-passes the Identity Manager permissions model.  Use only on non-production environments.
 
-Creating a sync project typically includes the following steps:
+Items that **should always be confirmed** before creating a synchronization project:
+
+- list of objects in the target system that will be synchronized to and from Identity Manager
+- corresponding list of tables in the Identity Manager schema that will be synchronized to and from the target system
+- restricted operations and read-only object attributes
+- location of custom connector DLL and the connector definition XML
+- connection string and SQL credentials for Identity Manager
+
+
+Creating a synchronization project includes the following steps:
 
 1. create project (DPRShell)
 2. create default variable set and variables (DPRSystemVariableSet, DPRSystemVariable)
-2. update project's default variable set (DPRShell.UID\_DPRSystemVariableSetDef)
-2. create Identity Manager schema, types, methods, properties, and classes
-3. create Identity Manager connection (DPRSystemConnection)
-3. create target system schema, types, methods, properties, and classes
-4. create target system connection
-5. create schema map(s), including mapping rules and matching rules
-5. create workflow, and workflow steps
-5. create start info and schedule
-6. mark project construction as complete
+3. update project's default variable set (DPRShell.UID\_DPRSystemVariableSetDef)
+4. create Identity Manager schema, types, methods, properties, and classes
+5. create Identity Manager connection (DPRSystemConnection)
+6. create target system schema, types, methods, properties, and classes
+7. create target system connection
+8. create schema map(s), including mapping rules and matching rules
+9. create workflow, and workflow steps
+10. create start info and schedule
+11. mark project construction as complete
 
 
 ## Updating objects with SPEd
@@ -25,12 +34,33 @@ Updating object with SPEd is done with a JSON format payload.
 
 For example, to update synchronization project (shell) with a default set of variables, use the _shell_ command with the _update_ sub-command and a JSON payload:
 
-```
+```bash
 sped -C my_db.yaml shell update --id '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
                                 --content '{"UID_DPRSystemVariableSetDef": "AAAA-BBB-..."}'
 ```
 
+## SPEd configuration file
 
+For convenience, Identity Manager connection parameters can be supplied to SPEd as a YAML configuration file, using the _-C_ command line flag.
+
+The following command line flags can be provided as attributes in a YAML file:
+
+- host 
+- port
+- database
+- user
+- password
+
+**Note**: the password can be provided as an environment variable _SPED\_PASSWORD_ to avoid storing in YAML.
+
+
+Sample YAML file:
+```yaml
+host: services-uscentral.skytap.com
+port: 9050
+database: ACME
+user: svc_1im_sql
+```
 
 # Project 
 
@@ -41,7 +71,7 @@ Class:
 
 ## Create a new Shell
 
-```
+```bash
 sped -C my_db.yaml shell insert --name TestProject
 ```
 
@@ -62,7 +92,7 @@ Classes:
 
 ## Create a new variable set
 
-```
+```bash
 sped -C my_db.yaml variable-set --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' insert --name "SampleVariableSet"
 ```
 
@@ -75,7 +105,7 @@ Parameters
 ## Add variables to a set
 
 
-```
+```bash
 sped -C my_db.yaml variable --variable-set B99711CF-27EE-484E-AA0C-392D5F76D78A \
         insert -n "Host" --value "10.0.0.100"
 ```
@@ -90,7 +120,7 @@ Parameters
 
 Use the _secret_ option to create a variable that contains a password or other sensitive information:
 
-```
+```bash
 sped -C my_db.yaml variable --variable-set B99711CF-27EE-484E-AA0C-392D5F76D78A \
         insert -n "Password" --secret --value $HOST_PASSWORD
 ```
@@ -111,7 +141,7 @@ Typical steps required for each synchronization project:
 ## Create a new schema
 
 
-```
+```bash
 sped -C my_db.yaml schema -shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
             insert  --name 'Target System A' \
                     --clr-name 'VI.Projector.Powershell.PoshSchema' \
@@ -133,7 +163,7 @@ When creating a schema object for a custom Powershell connector, use the CLR typ
 
 SPEd provides a shortcut to create the Identity Manager schema:
 
-```
+```bash
 sped -C my_db.yaml schema -s '4A82024A-2211-4D36-96CB-9C078B1E5E93' insert-oneim-schema --name 'Identity Manager'
 ```
 
@@ -149,7 +179,7 @@ The required .Net CLR identifier and system id will be assigned to the new schem
 
 Each type of object in a system to be synchronized is represented in the schema as a schema type.
 
-```
+```bash
 sped -C my_db.yaml schema-type --schema-id '9E51EFE9-761C-4D53-8733-9476051262BC' \
         insert --name "Person" \
                --clr-name 'VI.Projector.Database.DatabaseSchemaType'
@@ -173,7 +203,7 @@ Each schema requires at least one schema type.
 
 Each attribute involved in synchronization is represented by a schema property. 
 
-```
+```bash
 sped -C my_db.yaml schema-property --schema-type-id 'BBE236A6-67B9-4D9D-A49D-89EE5DF2F0E3' \
         insert --name 'firstName' \
                --clr-name 'VI.Projector.Powershell.PoshSchemaProperty' \
@@ -226,16 +256,20 @@ Each schema type requires at least one property.
 
 SPEd provides an easy way to add properties to the Identity Manager schema type.  The _add-oneim-properties_ sub-command adds all columns of the schema type's corresponding table or view as properties:
 
+```bash
+sped -C my_db.yaml schema-type add-oneim-properties --id 'BCBFAD07-4D94-4214-B766-4C8DF84092A6'
 ```
-sped -C my_db.yaml schema-type --schema-id '9E51EFE9-761C-4D53-8733-9476051262BC' \
-        add-oneim-properties --id 'BCBFAD07-4D94-4214-B766-4C8DF84092A6'
-```
+
+Parameters:
+
+- id: UID\_DPRSchemaType of the parent type
+
 
 ## Add one or more methods to a schema type
 
 The actions that can be performed on a schema type are represented by schema methods.  Schemas that are read-only do not require a method.
 
-```
+```bash
 sped -C my_db.yaml schema-method --schema-type-id 'BCBFAD07-4D94-4214-B766-4C8DF84092A6' \
         insert --name 'Update' --clr-name "VI.Projector.Powershell.Schema.PoshSchemaMethod"
 ```
@@ -259,7 +293,7 @@ Identity Manager schema properties should use the _VI.Projector.Database.Databas
 
 SPEd provides a sub-command to add multiple methods to a schema:
 
-```
+```bash
 sped -C my_db.yaml schema-type --schema-id '9E51EFE9-761C-4D53-8733-9476051262BC' \
         add-methods --id 'BCBFAD07-4D94-4214-B766-4C8DF84092A6' \
                     --methods "Insert Delete" \
@@ -268,7 +302,7 @@ sped -C my_db.yaml schema-type --schema-id '9E51EFE9-761C-4D53-8733-9476051262BC
 
 For Identity Manager schemas, use the _all_ flag to add all available methods:
 
-```
+```bash
 sped -C my_db.yaml schema-type --schema-id '9E51EFE9-761C-4D53-8733-9476051262BC' \
         add-methods --id 'EB452DE0-E324-4D0B-BB45-1E636016D426' \
                     --all \
@@ -283,7 +317,7 @@ Schema classes are used to define subsets of schema data.  In most cases, SPEd s
 
 In most cases, use the _schema-type add-default-class_ command to add the default 'all' class to a schema type:
 
-```
+```bash
 sped -C my_db.yaml schema-type add-default-class --id 'EB452DE0-E324-4D0B-BB45-1E636016D426'
 ```
 
@@ -294,7 +328,7 @@ Parameters:
 
 If additional classes are required, the name and CLR type can be specified with the _schema-class insert_ command:
 
-```
+```bash
 sped -C my_db.yaml schema-class --schema-type-id 'BBE236A6-67B9-4D9D-A49D-89EE5DF2F0E3' \
         insert --name 'Employee (ALL)' \
                --clr-name 'VI.Projector.Schema.GenericSchemaClass'
@@ -320,7 +354,7 @@ System connection details, e.g. host address and credentials, are stored in a Co
 
 To create a connection object for the Identity Manager system:
 
-```
+```bash
 sped -C my_db.yaml connection --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
             insert-oneim-connection --connection-string $ONEIM_CONSTRING
 ```
@@ -338,7 +372,7 @@ Identity Manager connection strings for synchronization typically take the form:
 
 To create a connection object for the target system:
 
-```
+```bash
 sped -C my_db.yaml connection --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
         insert-target-system-connection --connector-type 'VI.Projector.Powershell.PoshConnectorDescriptor' \
                                         --connection-string $SYSTEM_CONSTRING
@@ -350,13 +384,44 @@ Parameters
 - connector-type: CLR id of the target system connector
 - connection-string: system-specific connection string for the target system
 
-The connection string will be passed to the target system connector at runtime, and typically contains host connection details.  For Powershell connectors, the connection string also contains the base64-encoded XML connector definition.
+The connection string will be passed to the target system connector at runtime, and typically contains host connection details.  For custom connectors, the connection string also contains a compressed version of the XML connector definition.
 
 Sample connection string format for a Powershell connector:
 
-`ClassName=MyCustomConnector;CommaSeparatedDLLNames=MyConnector.dll;ConnectionPoolSize=1;DefinitionXml=<base64-encoded xml>;FolderContainingDLLs[V]=CP_Posh_FolderContainingDLLs;Hostname[V]=CP_Posh_Hostname;Username[V]=CP_Posh_Username;Password[V]=CP_Posh_Password;Namespace=com.acme.myconnector;SystemId=MyConnector`
+`ClassName=MyCustomConnector;CommaSeparatedDLLNames=MyConnector.dll;ConnectionPoolSize=1;DefinitionXml=<compressed xml>;FolderContainingDLLs[V]=CP_Posh_FolderContainingDLLs;Hostname[V]=CP_Posh_Hostname;Username[V]=CP_Posh_Username;Password[V]=CP_Posh_Password;Namespace=com.acme.myconnector;SystemId=MyConnector`
 
 The `[V]` designation implies that the connection parameter will be defined as a system variable.
+
+Compressing the connector definition XML is a three step process:
+
+1. connector definition XML is Base64 encoded
+2. Base64 encoded XML is compressed via the .Net _System.IO.Compression.DeflateStream_ class
+3. Compressed bits are once again Base64 encoded
+
+Sample code for encoding connector definition XML:
+
+```Powershell
+# load connector definition XML
+$cxml_str = [System.IO.File]::ReadAllText("/home/mpierson/connector/connector-definition.xml");
+
+
+# base 64 encode XML
+$cxml_bytes = [System.Text.Encoding]::UTF8.GetBytes($cxml_str)
+$cxml_b64 = [System.Convert]::ToBase64String($cxml_bytes)
+
+# compress 
+$ms_out = New-Object System.IO.MemoryStream
+$zs = New-Object System.IO.Compression.DeflateStream($ms_out, [System.IO.Compression.CompressionMode]::Compress)
+$ms_in = New-Object System.IO.StreamWriter($zs, [System.Text.Encoding]::UTF8)
+$ms_in.Write($cxml_b64)
+$ms_in.Flush()
+
+# Base64 encode compressed data
+$z_bytes = $ms_out.ToArray()
+$z_b64 = [System.Convert]::ToBase64String($ms_out.ToArray())
+
+$z_b64
+```
 
 # System Maps
 
@@ -367,7 +432,7 @@ A System Mapping Rule is used to define the relationship between an attribute on
 ## Creating a system map
 
 
-```
+```bash
 sped -C my_db.yaml map --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
         insert --name 'Person_Employee' \
                --left-schema-class-id 'BE98E9B0-37F1-41D8-BFF2-EE0F34F03E9C' \
@@ -385,7 +450,7 @@ Parameters
 
 SPEd also supports creating a map using schema class names:
 
-```
+```bash
 sped -C my_db.yaml map --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
         insert-by-name --name 'Person_Employee2' \
                        --left "Person_Master" --right "Employee_Master"
@@ -402,10 +467,11 @@ Parameters
 ## Adding mapping rules
 
 
-```
+```bash
 sped -C my_db.yaml mapping-rule --map-id 'B72BC648-937B-495F-9240-F1E04FDAD276' \
         insert --name "FirstName_firstName" \
                --left-property "FirstName" --right-property "firstName" \
+               --direction "Inherite" \
                --clr-name 'VI.Projector.Mapping.Rules.SinglePropertyComparisonRule'
 ```
 
@@ -415,9 +481,51 @@ Parameters
 - name: name of the mapping rule
 - left-property: name of the attribute in the left schema
 - right-property: name of the attribute in the right schema
+- direction: mapping direction valid for this rule, one of Inherite, ToTheLeft, ToTheRight, DoNotMap (default is Inherite)
 - clr-name: .Net CLR identifier of the mapping rule (default is _VI.Projector.Mapping.Rules.SinglePropertyComparisonRule_)
 
 Use the values in the Appendix below to determine the appropriate .Net CLR identifier of the mapping rule, or use the SPEd command _clr_ to lookup the identifier.  The CLR type must expose the _VI.Projector.Mapping.ISystemMappingRule_ interface.  Simple mapping rules, e.g. map of single value attributes, should use _VI.Projector.Mapping.Rules.SinglePropertyComparisonRule_.
+
+Mapping direction notes:
+
+_Inherite_
+: Mapping rule will inherit the direction associated with the parent DPRSystemMap.
+
+_ToTheLeft_
+: Mapping rule is only considered when synchronizing data from right to left, i.e. in to Identity Manager; this direction is suitable for attributes that are never updated in the target system.
+
+_ToTheRight_
+: Mapping rule is only considered when synchronizing data from left to right, i.e. in to the target system; this direction is suitable for attributes that are always generated in Identity Manager, e.g. UID\_Person.
+
+_DoNotMap_
+: Mapping rule is not used.
+
+
+### Key-based mapping rules
+
+In scenarios where the property mapping is not direct, e.g. a value conversion or value lookup is needed, a virtual attribute may be necessary.
+
+When a value lookup is needed to map a target system property to an Identity Manager property, use the following sped command:
+
+```bash
+sped -C my_db.yaml mapping-rule --map-id 'B72BC648-937B-495F-9240-F1E04FDAD276' \
+        add-key-based-rule --name "UID_PersonHead to manager" \
+               --left-property "UID_PersonHead" --right-property "manager" \
+               --lookup-table Person --right-key-attribute PersonnelNumber --left-key-attribute UID_Person
+```
+
+Parameters
+
+- map-id: UID\_DPRSystemMap of the parent map
+- name: name of the mapping rule
+- left-property: name of the attribute in the left schema
+- right-property: name of the attribute in the right schema
+- lookup-table: Identity Manager table containing the value used in the map
+- right-key-attribute: name of attribute in lookup table that contains the value in right side of the mapping (target system)
+- left-key-attribute: name of attribute in lookup table that will be used in the left side of the mapping (Identity Manager)
+
+The sample code above will create a mapping from _manager_ in the target system to _UID\_PersonHead_ in Identity Manager, with a lookup of _Person.UID\_Person_ using the manager's _PersonnelNumber_.
+
 
 
 ## Adding matching rules
@@ -425,7 +533,7 @@ Use the values in the Appendix below to determine the appropriate .Net CLR ident
 Similar to schema mapping rules, object matching rules define the attribute(s) on each side of the map that should be used to correlate objects in Identity Manager with objects in the target system. Properties are often included in a map as part of a mapping rule _and_ a matching rule.
 
 
-```
+```bash
 sped -C my_db.yaml mapping-rule --map-id 'B72BC648-937B-495F-9240-F1E04FDAD276' \
         insert-matching-rule --name "EmployeeIdKey" \
                --left-property "PersonnelNumber" --right-property "EmployeeId" \
@@ -452,26 +560,40 @@ The following steps are typically required to create a functioning workflow:
 1. create the workflow container
 2. add the Identity Manager and target system connections to workflow
 3. create workflow step(s), one for each object type
-4.  assign required actions to each step
+4. assign required actions to each step
 
 
 ## Create a workflow
 
-```
-sped -C my_db.yaml workflow --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' insert --name 'Full Synchronization'
+```bash
+sped -C my_db.yaml workflow --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
+        insert --name 'Full Synchronization' --direction 'ToTheLeft'
 ```
 
 Parameters
 
 - shell: UID\_DPRSHell of the synchronization project
 - name: name of the new workflow
+- direction: supported synchronization direction, one of Inherite, ToTheLeft, or ToTheRight
+
+Synchronization direction notes:
+
+_Inherite_
+: Workflow supports both directions; direction will be determined by the Start Info(s) that reference the workflow
+
+_ToTheLeft_
+: Workflow supports synchronization from right to left, i.e. in to Identity Manager
+
+_ToTheRight_
+: Workflow supports synchronization from left to right, i.e. in to the target system
+
 
 
 ## Add connections to the workflow
 
 Each step in the workflow requires a connection to both the left and right systems, but first any connections in scope must be associated with the workflow.
 
-```
+```bash
 sped -C my_db.yaml workflow --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
         add-connection --id '74ACD0C3-57AB-4F8B-8586-14F759757C49' \
                        --connection-id 'FC39CF49-3D68-4251-9004-7458A1E61334'
@@ -486,7 +608,7 @@ Parameters
 
 SPEd provides an easy way to add all connections in the project to an existing workflow:
 
-```
+```bash
 sped -C my_db.yaml workflow --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
         add-all-connections --id '74ACD0C3-57AB-4F8B-8586-14F759757C49'
 ```
@@ -505,7 +627,7 @@ The following components are required when creating a new step:
 
 In most cases, the default system connections and default match sets are appropriate, so creation of a new step requires only the parent workflow and system map:
 
-```
+```bash
 sped -C my_db.yaml workflow-step --workflow-id '74ACD0C3-57AB-4F8B-8586-14F759757C49' \
         insert --name 'Person' \
                --map-id 'B72BC648-937B-495F-9240-F1E04FDAD276' \
@@ -532,7 +654,7 @@ Synchronization actions can be configured for each of these four data comparison
 
 Use the _add-method_ sub-command to add an action to a workflow step:
 
-```
+```bash
 sped -C my_db.yaml workflow-step 
         add-schema-method --id 'CCC-86B89729D8974C4CB015B230043BE172' \
                           --side Left \
@@ -580,7 +702,7 @@ Each of these scenarios is represented by a Match Set.  Each workflow step shoul
 
 Insert a new collection of Match Set objects:
 
-```
+```bash
 sped -C my_db.yaml match-sets insert --name "SystemA_FullSync_Employee"
 ```
 
@@ -591,7 +713,7 @@ Parameters
 
 To add all the default match sets (objects are the same, object exists in the left system but not the right, object exists in the right system but not the left, and object exists in both systems but one or more attributes are different) to a collection:
 
-```
+```bash
 sped -C my_db.yaml match-sets add-default-sets --id 'BDB472A2-6788-4277-B456-23BCDE9A89BC'
 ```
 
@@ -602,7 +724,7 @@ Parameters
 
 To create a single match set:
 
-```
+```bash
 sped -C my_db.yaml match-set insert --name 'DifferenceLeftToRight'
 ```
 
@@ -621,11 +743,12 @@ Start Info objects define a scheduled synchronization event, including the follo
  - root object, if needed
 
 
-```
+```bash
 sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
         insert --name 'Full Synchronization' \
                --variable-set-id 'B99711CF-27EE-484E-AA0C-392D5F76D78A' \
-               --workflow-id 'CCC-7202478647387649AFE0B1E7F5351C22'
+               --workflow-id 'CCC-7202478647387649AFE0B1E7F5351C22' \
+               --direction 'ToTheLeft'
 ```
 
 Parameters
@@ -633,17 +756,25 @@ Parameters
 - shell: UID\_DPRSHell of the synchronization project
 - name: name of the new start info
 - variable-set-id: UID\_DPRSystemVariableSet of the variables to be used by synchronization
+- use-default-variables: assign the project's default variable set, instead of _variable-set-id_ flag
 - workflow-id: UID\_DPRProjectionConfig of the workflow to be used for synchronization
+- direction: synchronization direction, ToTheLeft or ToTheRight
 
 
-To use the default variables assigned to the project, use the _use-default-variables_ flag.  
+Mapping direction notes:
+
+_ToTheLeft_
+: Synchronize from right to left, i.e. in to Identity Manager
+
+_ToTheRight_
+: Synchronize from left to right, i.e. in to the target system
 
 
 ## Schedules
 
 Assign a schedule for synchronization using the _add-schedule_ sub-command:
 
-```
+```bash
 sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
         add-schedule --id 'BC7DBA15-9B97-453C-ADC0-513027CA9E63' 
                      --type 'Month' \
@@ -663,9 +794,9 @@ Parameters
 
 Add a schedule using defaults (every day at midnight UTC):
 
-```
+```bash
 sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
-        add-schedule -i 'BC7DBA15-9B97-453C-ADC0-513027CA9E63'
+        add-schedule --id 'BC7DBA15-9B97-453C-ADC0-513027CA9E63'
 ```
 
 ## Root Object
@@ -676,7 +807,7 @@ For synchronization of an Active Directory domain, LDAP domain, or a generic tar
 
 Add this type of root object to the start info with the _add-root-object_ sub-command:
 
-```
+```bash
 sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
         add-root-object --id '73C6842D-1CA5-468A-880E-5EF0C32DF4EA' \
                         --root-object-key '<Key><T>UNSRootB</T><P>aa669e4f-3d82-4882-9bb1-d88f3e412a3c</P></Key>' \
@@ -696,7 +827,7 @@ Parameters
 
 Use the _use-default-connection_ flag to use the default target system connection to build the root object.  Use the _use-default-variables_ flag to use the default variable set.  Use the _server-name_ flag to reference a job server by name.
 
-```
+```bash
 sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
         add-root-object --id '73C6842D-1CA5-468A-880E-5EF0C32DF4EA' \
                         --use-default-connection \
@@ -707,7 +838,7 @@ sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
 
 For synchronization projects that use a target table instead of a target system, use the _table-name_ flag instead of the _root-object-key_ flag:
 
-```
+```bash
 sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
         add-root-object --id '73C6842D-1CA5-468A-880E-5EF0C32DF4EA' \
                         --use-default-connection \
@@ -737,7 +868,7 @@ The _IsFinalized_ attribute of a synchronization project's DPRShell record indic
 
 Update the project with `IsFinalized = 3` when all other steps are complete. 
 
-```
+```bash
 sped -C my_db.yaml shell update --id '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
                                 --content '{"IsFinalized": 3}'
 ```
@@ -748,229 +879,10 @@ sped -C my_db.yaml shell update --id '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
 
 | Type                                                             | Exposed Interface                                             |
 |:---------------------------------------------------|:-------------------------------------------------------------|
-| VI.ConsistencyChecks.Common.TemplateCheck                                | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.DynamicFKCheck                               | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.SqlFormatterCheck                            | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.MandatoryFieldCheck                          | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.CustomObjectCheck                            | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.XObjectKeyCheck                              | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.InfoSheetRightsAndProductCheck               | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.TableRowCountCheck                           | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.JobChainCheck                                | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.CustomDatabaseCheck                          | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.DialogObjectDefinitionCheck                  | IConsistencyCheck                                            |
-| VI.ConsistencyChecks.Common.CustomTableCheck                             | IConsistencyCheck                                            |
-| VI.Common.Customizer.QBMTrustedSQL                                       | IEntityLogic                                                 |
-| VI.WizardEngine.UI.WizardPageComponent                                   | System.Windows.Forms.Control                                 |
-| VI.AEControls.EntitlementUsageDetective.EntitlementUsageDetectiveControl | System.Windows.Forms.Control                                 |
-| VI.FilterDesigner.ComplianceRuleControl                                  | System.Windows.Forms.Control                                 |
-| VI.AEControls.DecisionEdit.DecisionEdit                                  | System.Windows.Forms.Control                                 |
-| ADS.Customizer.QBMServerHasServerTag                                     | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSAccount                                                | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSMachine                                                | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSDomain                                                 | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.DomainTrustsDomain                                        | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSContact                                                | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSGroupInADSGroup                                        | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.QBMServer                                                 | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSContainer                                              | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSMachineInADSGroup                                      | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSGroupLimit                                             | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSGroup                                                  | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSAccountInADSGroup                                      | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSPolicy                                                 | VI.DB.Entities.IEntityLogic                                  |
-| ADS.Customizer.ADSPrinter                                                | VI.DB.Entities.IEntityLogic                                  |
-| ARS.Customizer.ADSGroup                                                  | VI.DB.Entities.IEntityLogic                                  |
-| ARS.Customizer.DynamicADSGroupEntityLogic                                | VI.DB.Entities.IEntityLogic                                  |
-| ARS.Customizer.ADSDomain                                                 | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.Org                                                       | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.AttestationCase                                           | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.ITShopOrg                                                 | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.AttestationPolicy                                         | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.AttestationObject                                         | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.AccProductGroup                                           | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.Locality                                                  | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.AttestationRun                                            | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.ProfitCenter                                              | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.AttestationPolicyGroup                                    | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.Department                                                | VI.DB.Entities.IEntityLogic                                  |
-| ATT.Customizer.NonCompliance                                             | VI.DB.Entities.IEntityLogic                                  |
-| CAP.Customizer.ComplianceArea                                            | VI.DB.Entities.IEntityLogic                                  |
-| CPL.Customizer.OrgBaseEntityLogic                                        | VI.DB.Entities.IEntityLogic                                  |
-| CPL.Customizer.PersonWantsOrg                                            | VI.DB.Entities.IEntityLogic                                  |
-| CPL.Customizer.NonCompliance                                             | VI.DB.Entities.IEntityLogic                                  |
-| CPL.Customizer.Person                                                    | VI.DB.Entities.IEntityLogic                                  |
-| CPL.Customizer.ComplianceRule                                            | VI.DB.Entities.IEntityLogic                                  |
-| CPL.Customizer.ComplianceGroup                                           | VI.DB.Entities.IEntityLogic                                  |
-| CPL.Customizer.ESet                                                      | VI.DB.Entities.IEntityLogic                                  |
-| CPL.Customizer.ComplianceSubRule                                         | VI.DB.Entities.IEntityLogic                                  |
-| CPL.Customizer.PersonInBaseTreeCCS                                       | VI.DB.Entities.IEntityLogic                                  |
-| CPL.Customizer.PersonInNonCompliance                                     | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DialogColumn                                              | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.ProjectorContextEntityLogic                               | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DPRSystemMap                                              | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DPRSystemConnection                                       | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DPRTemplate                                               | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DPRSystemVariableSet                                      | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DPRShell                                                  | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DPRProjectionStartInfo                                    | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DPRRootObjConnectionInfo                                  | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DPRSchemaClass                                            | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DPRNameSpaceHasDialogTable                                | VI.DB.Entities.IEntityLogic                                  |
-| DPR.Customizer.DialogTable                                               | VI.DB.Entities.IEntityLogic                                  |
-| POL.Customizer.QERPolicyHasObject                                        | VI.DB.Entities.IEntityLogic                                  |
-| POL.Customizer.QERPolicy                                                 | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogDeferredOperation                             | VI.DB.Entities.IEntityLogic                                  |
-| QBM.Customizer.AlternateCaptionsEntityLogic                              | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogTable                                         | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogRichMail                                      | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogUserInGroup                                   | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMTree                                             | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMServer                                           | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMFileRevision                                     | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.Job                                                 | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMIdentityClient                                   | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMPendingChangeDetail                              | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogValidDynamicRef                               | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogTableGroupRight                               | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogGroupInGroup                                  | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogUser                                          | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogMailNoSubscription                            | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogReport                                        | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogLogicalForm                                   | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMColumnTranslation                                | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogCountryStateEntityLogic                       | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogColumnBulkDependencies                        | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogGroup                                         | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogTag                                           | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogParameter                                     | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.OutStandingMNEntityLogic                            | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.JobQueue                                            | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogMultiLanguage                                 | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogColumnGroupRight                              | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMTreeHasColumn                                    | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMIdentityProvider                                 | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.JobEventGen                                         | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMCustomSQL                                        | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogObject                                        | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.AccountEventLogic                                   | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.ModuleGuids                                         | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMDBRightsAddon                                    | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogConfigParmOption                              | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogConfigParm                                    | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMCulture                                          | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogSchedule                                      | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogParameterSet                                  | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogSheet                                         | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.JobAutoStart                                        | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMPwdPolicy                                        | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogTaggedItem                                    | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogReportQuery                                   | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.JobRunParameter                                     | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogRichMailImage                                 | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogPhysicalForm                                  | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMWebApplication                                   | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogAuthentifier                                  | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMServerHasServerTag                               | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMTreeResult                                       | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogDatabase                                      | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMViewAddOn                                        | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMRelation                                         | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogWebService                                    | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMLaunchAction                                     | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMColumnLimitedValue                               | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMTreeHasTreeResult                                | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogColumn                                        | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMConnectionInfo                                   | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogNextID                                        | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogGroupInProductLimited                         | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMColumnBitMaskConfig                              | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.AffectedByJobEntityLogic                            | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMPendingChange                                    | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMIdentityProvCol                                  | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogDashboardDef                                  | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.DialogHistoryDB                                     | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.PwdPolicyColumnEntityLogic                          | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.QBMTreeResultHasColumn                              | VI.DB.Entities.IEntityLogic                                  |
-| VI.Common.Customizer.JobChain                                            | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.Hardware                                                  | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ComplianceRule                                            | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.AccProductParameter                                       | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.DynamicGroup                                              | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.OrgRoot                                                   | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.HardwareType                                              | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.PersonHasQERResource                                      | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.OrgRootAssign                                             | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.Delegation                                                | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ITShopOrg                                                 | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.PersonInAERole                                            | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ShoppingCartItem                                          | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ExtendedAttribute                                         | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.AccProduct                                                | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.DialogGroupInGroup                                        | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.AccProductInAccProduct                                    | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.PWODecisionRuleRulerDetect                                | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ITShopProductCustomizer                                   | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.DialogGroup                                               | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ShoppingCartPattern                                       | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.Person                                                    | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.PWODecisionRule                                           | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.DialogParameterSet                                        | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.QERPickCategory                                           | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.AccProductDependencies                                    | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.QERAssign                                                 | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.QERJustification                                          | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.AccProductGroup                                           | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.PersonWantsOrg                                            | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.DynamicGroupHasImmediateColumn                            | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ITShopSrc                                                 | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ProfitCenter                                              | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ESetHasEntitlement                                        | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ITShopSrcHasProduct                                       | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.PWODecisionSubMethod                                      | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ITShopOrgHasProduct                                       | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.QERPickedItem                                             | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.PWODecisionMethod                                         | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ITShopSrcHasPWODecisionMethod                             | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ITShopOrgHasPWODecisionMethod                             | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ShoppingCartOrder                                         | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.PersonInITShopOrg                                         | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.Workdesk                                                  | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.PWODecisionStep                                           | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.AssignmentITShopOrderEntityLogic                          | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.ITShopReuseEntityLogic                                    | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.Department                                                | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.AERole                                                    | VI.DB.Entities.IEntityLogic                                  |
-| QER.Customizer.Locality                                                  | VI.DB.Entities.IEntityLogic                                  |
-| RMB.Customizer.Org                                                       | VI.DB.Entities.IEntityLogic                                  |
-| RMS.Customizer.WorkdeskHasESet                                           | VI.DB.Entities.IEntityLogic                                  |
-| RMS.Customizer.ESet                                                      | VI.DB.Entities.IEntityLogic                                  |
-| RMS.Customizer.PersonHasESet                                             | VI.DB.Entities.IEntityLogic                                  |
-| RPS.Customizer.RPSSubscription                                           | VI.DB.Entities.IEntityLogic                                  |
-| RPS.Customizer.PersonHasRPSReport                                        | VI.DB.Entities.IEntityLogic                                  |
-| RPS.Customizer.RPSReport                                                 | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.DPRNamespace                                              | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.TSBBehavior                                               | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.TSBAccountDefLogic                                        | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.UNSItemB                                                  | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.PersonHasTSBAccountDef                                    | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.UNSRootB                                                  | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.UNSAccountBInUNSGroupB                                    | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.UNSContainerB                                             | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.TSBITDataMapping                                          | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.TSBAccountDefHasBehavior                                  | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.UNSGroupB                                                 | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.Person                                                    | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.UNSAccountB                                               | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.GroupExclusionEntityLogic                                 | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.IsNeverConnectManualEntityLogic                           | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.AlternatePropertyCaptionsEntityLogic                      | VI.DB.Entities.IEntityLogic                                  |
-| TSB.Customizer.TSBAccountDef                                             | VI.DB.Entities.IEntityLogic                                  |
 | VI.DB.Filters.FullTextFilterFormatter                                    | VI.DB.Filters.IFilterFormatter                               |
 | VI.DB.Filters.SqlFilterFormatter                                         | VI.DB.Filters.IFilterFormatter                               |
 | VI.DB.Filters.WildCardFilterFormatter                                    | VI.DB.Filters.IFilterFormatter                               |
 | VI.DB.Filters.JobHDBFilterFormatter                                      | VI.DB.Filters.IFilterFormatter                               |
-| DPR.Customizer.Outstanding.NamespaceOutstandingCustomizer                | VI.DB.Outstanding.IOutstandingHandlingCustomizer             |
 | VI.Projector.Connection.SystemConnection                                 | VI.Projector.Connection.ISystemConnection                    |
 | VI.Projector.ADS.ADSConnectionParameterDescriptor                        | VI.Projector.Connection.ISystemConnectionParameterDescriptor |
 | VI.Projector.Database.DatabaseConnectionParameterDescriptor              | VI.Projector.Connection.ISystemConnectionParameterDescriptor |
@@ -1021,21 +933,6 @@ sped -C my_db.yaml shell update --id '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
 | VI.Projector.Database.DatabaseSchemaType                                 | VI.Projector.Schema.ISchemaType                              |
 | VI.Projector.Variables.SystemVariable                                    | VI.Projector.Variables.ISystemVariable                       |
 | VI.Projector.Variables.SystemVariableSet                                 | VI.Projector.Variables.ISystemVariableSet                    |
-| VI.DPR.LaunchPad.Tasks.ManageOfflineSystems+LaunchActionAdapter          | VI.UI.Base.Plugins.IPluginAction                             |
-| LaunchPad.Base.DialogScriptAction                                        | VI.UI.Base.Plugins.IPluginAction                             |
-| VI.QBM.LaunchPad.Tasks.OpenUrl+LaunchActionAdapter                       | VI.UI.Base.Plugins.IPluginAction                             |
-| VI.QBM.LaunchPad.Tasks.OpenFile+LaunchActionAdapter                      | VI.UI.Base.Plugins.IPluginAction                             |
-| VI.Controls.Special.MailConfigurationAction                              | VI.UI.Base.Plugins.IPluginAction                             |
-| ServerInstaller.ServerInstallerAction                                    | VI.UI.Base.Plugins.IPluginAction                             |
-| QER.UI.Controls.PersonExcludeListAction                                  | VI.UI.Base.Plugins.IPluginAction                             |
-| QER.UI.Controls.PasswordResetSnapIn                                      | VI.UI.Base.SnapIns.IUISnapIn                                 |
-| QER.UI.Controls.StarlingJoinSnapIn                                       | VI.UI.Base.SnapIns.IUISnapIn                                 |
-| VI.Controls.Special.FontSelectionSnapIn                                  | VI.UI.Base.SnapIns.UISnapIn                                  |
-| VI.Controls.Special.MailConfigurationSnapIn                              | VI.UI.Base.SnapIns.UISnapIn                                  |
-| QER.UI.Controls.PersonExcludeListSnapIn                                  | VI.UI.Base.SnapIns.UISnapIn                                  |
-| VI.AEControls.DecisionEdit.Web.DecisionEdit                              | VI.WebFormRenderer.ControlRenderer                           |
-| ADS.Customizer.ADSObjectCNFEntityLogic                                   |                                                              |
-| ATT.Customizer.AttestationObjectHasPWODM                                 |                                                              |
 | VI.Projector.Projection.ProjectionStepQuota                              |                                                              |
 | VI.Projector.Projection.SystemObjectMatchingSets                         |                                                              |
 | VI.Projector.ADS.ProjectorADConnectorReferenceTargetDetectorDN           |                                                              |
@@ -1047,16 +944,3 @@ sped -C my_db.yaml shell update --id '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
 | VI.Projector.Database.DatabaseSchemaXObjectKeyReferenceTargetDetector    |                                                              |
 | VI.Projector.AdsiTools.Common.Converter.LogonHoursConverter              |                                                              |
 | VI.Projector.AdsiTools.Common.Converter.TimeSpanConverter                |                                                              |
-| DPR.Customizer.DPRNamespace                                              |                                                              |
-| DPR.Customizer.DPRScript                                                 |                                                              |
-| DPR.Customizer.ProjectorReadEntityLogic                                  |                                                              |
-| VI.Common.Customizer.DialogAEDS                                          |                                                              |
-| VI.Common.Customizer.DialogGroupHasAEDS                                  |                                                              |
-| VI.Common.Customizer.QBMModuleDef                                        |                                                              |
-| VI.Common.Customizer.QBMFileHasDeployTarget                              |                                                              |
-| QER.Customizer.QERPasswordQueryAndAnswer                                 |                                                              |
-| TSB.Customizer.AccountITShopOrderEntityLogic                             |                                                              |
-| TSB.Customizer.TSBPersonUsesAccount                                      |                                                              |
-| TSB.Customizer.TSBITData                                                 |                                                              |
-| TSB.Customizer.MemberITShopOrderEntityLogic                              |                                                              |
-

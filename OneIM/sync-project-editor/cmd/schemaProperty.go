@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/xml"
 	"errors"
 	"fmt"
 
@@ -14,11 +15,16 @@ import (
 type DPRSchemaProperty struct {
 	oneim.Specials
 	Displayable
-	UID_DPRSchemaProperty string
-	UID_DPRSchemaType     string
-	UID_QBMClrType        string
-	DataType              *string
-	SchemaType            string `mapstructure:",omitzero"`
+	UID_DPRSchemaProperty     string
+	UID_DPRSchemaType         string
+	UID_QBMClrType            string
+	IsAdditional              int
+	IsReference               int
+	IsVirtual                 bool
+	UID_BaseDPRSchemaProperty *string
+	SerializationBag          *string
+	DataType                  *string
+	SchemaType                string `mapstructure:",omitzero"`
 }
 
 var SchemaPropertyCmd = CreateBaseCommand(
@@ -67,8 +73,8 @@ var InsertSchemaPropertyCmd = CreateInsertCommand(
 )
 
 func insertSchemaProperty(c *cobra.Command, db *sqlx.DB) error {
-	clrId, _ := c.Flags().GetString("clr-name")
-	return ExecInsertCommand[DPRSchemaProperty](c, db, clrId, newSchemaProperty_cmd)
+	clr, _ := c.Flags().GetString("clr-name")
+	return ExecInsertCommand[DPRSchemaProperty](c, db, clr, newSchemaProperty_cmd)
 }
 
 func newSchemaProperty_cmd(
@@ -131,4 +137,91 @@ func GetAllSchemaProperties(db *sqlx.DB, schemaTypeId string) ([]DPRSchemaProper
 
 	return dbx.GetStructData[DPRSchemaProperty](db, "DPRSchemaProperty",
 		fmt.Sprintf(`UID_DPRSchemaType='%s'`, schemaTypeId))
+}
+
+type SerializationBagData struct {
+	XMLName xml.Name `xml:"Data"`
+	Name    string   `xml:",attr"`
+	Type    string   `xml:",attr"`
+	Value   string   `xml:",chardata"`
+}
+type SchemaPropertySerializationBag struct {
+	XMLName xml.Name               `xml:"SerializationBag"`
+	Version string                 `xml:",attr"`
+	Datas   []SerializationBagData `xml:"Data"`
+}
+
+type ResolutionSchemaTypeInformation struct {
+	XMLName                xml.Name `xml:"ResolutionSchemaTypeInformation"`
+	Name                   string   `xml:",attr"`
+	ResolutionPropertyName string   `xml:",attr"`
+	ValuePropertyName      string   `xml:",attr"`
+}
+type ResolutionSchemaTypes struct {
+	XMLName   xml.Name `xml:"ResolutionSchemaTypes"`
+	TypeInfos []ResolutionSchemaTypeInformation
+}
+
+func InsertKeyBasedVirtualProperty(db *sqlx.DB,
+	schemaTypeId string, baseAttrName string,
+	lookupTable string, resolutionAttr string, valueAttr string,
+) (string, error) {
+
+	propName := fmt.Sprintf("vrt%s", baseAttrName)
+	baseAttr, err := GetSchemaProperty(db, schemaTypeId, baseAttrName)
+	if err != nil {
+		return "", err
+	}
+
+	clrName := "VI.Projector.Schema.Properties.MultiKeyResolutionSchemaProperty"
+	clrId, err := GetClrId(db, clrName)
+	if err != nil {
+		return "", err
+	}
+
+	id, err := dbx.GetNewId(db)
+	objectKey := oneim.MakeObjectKey("DPRSchemaProperty", id)
+
+	prop, err := newSchemaProperty(db, schemaTypeId, id, objectKey, propName, "String", clrId)
+	if err != nil {
+		return "", err
+	}
+	prop.UID_BaseDPRSchemaProperty = &baseAttr.UID_DPRSchemaProperty
+	prop.IsVirtual = true
+	prop.IsAdditional = -1
+	prop.IsReference = -1
+
+	// internal xml def for serialization bag
+	rst := &ResolutionSchemaTypes{}
+	rst.TypeInfos = []ResolutionSchemaTypeInformation{
+		ResolutionSchemaTypeInformation{Name: lookupTable, ResolutionPropertyName: resolutionAttr, ValuePropertyName: valueAttr},
+	}
+	rst_str, _ := xml.MarshalIndent(rst, " ", "  ")
+
+	// serialization bag container
+	sb := &SchemaPropertySerializationBag{Version: "1.0"}
+	sb.Datas = []SerializationBagData{
+		SerializationBagData{Name: "ResolutionInformation", Type: "String", Value: string(rst_str)},
+		SerializationBagData{Name: "IgnoreCase", Type: "Bool", Value: "False"},
+		SerializationBagData{Name: "HandleResolutionFailureAsError", Type: "Bool", Value: "False"},
+		SerializationBagData{Name: "UseSystemAttachedDataStore", Type: "Bool", Value: "True"},
+		SerializationBagData{Name: "ReportResolutionFailure", Type: "Bool", Value: "True"},
+	}
+	sb_byte, _ := xml.MarshalIndent(sb, " ", "  ")
+	sb_str := string(sb_byte)
+	prop.SerializationBag = &sb_str
+
+	err = InsertDPRObject[DPRSchemaProperty](db, prop)
+	if err != nil {
+		return "", err
+	}
+
+	return *prop.Name, nil
+}
+
+func GetSchemaProperty(db *sqlx.DB, schemaTypeId string, name string) (*DPRSchemaProperty, error) {
+
+	wc := fmt.Sprintf("UID_DPRSchemaType='%s' and Name='%s'", schemaTypeId, name)
+	t, err := dbx.GetStructSingletonByWC[DPRSchemaProperty](db, wc)
+	return &t, err
 }

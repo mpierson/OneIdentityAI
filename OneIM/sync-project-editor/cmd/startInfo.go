@@ -43,6 +43,8 @@ type DPRProjectionStartInfo struct {
 	VariableSet                   string `mapstructure:",omitzero"`
 }
 
+var STARTINFO_MaintenanceType_Invalidate = "Invalidate"
+
 var StartInfoCmd = CreateBaseCommand(
 	"start-info",
 	"sync project start info commands",
@@ -92,7 +94,7 @@ func fillStartInfoData(db *sqlx.DB, t *DPRProjectionStartInfo) error {
 var InsertStartInfoCmd = CreateInsertCommand(
 	"create a new synchronization start info",
 	`Create a new sync Connection (DPRProjectionStartInfo).`,
-	[]string{"shell", "name"},
+	[]string{"shell", "name", "direction"},
 	insertStartInfo,
 )
 
@@ -144,6 +146,11 @@ func newStartInfo(
 		}
 	}
 
+	direction, err := c.Flags().GetString("direction")
+	if err != nil {
+		return nil, err
+	}
+
 	t := DPRProjectionStartInfo{
 		UID_DPRProjectionStartInfo: id,
 		UID_DPRShell:               shellId,
@@ -153,12 +160,20 @@ func newStartInfo(
 			Name:        &id,
 			DisplayName: &name,
 		},
+		PartitionSize:            1024,
+		BulkLevel:                1024,
+		LoadPartitionedThreshold: 8,
+		MaintenanceRetryCycles:   2,
+		MaintenanceType:          &STARTINFO_MaintenanceType_Invalidate,
 	}
 	if len(variableSetId) > 0 {
 		t.UID_DPRSystemVariableSet = &variableSetId
 	}
 	if len(wfId) > 0 {
 		t.UID_DPRProjectionConfig = &wfId
+	}
+	if len(direction) > 0 {
+		t.ProjectionDirection = &direction
 	}
 
 	return &t, nil
