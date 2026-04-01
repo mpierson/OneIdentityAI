@@ -71,6 +71,7 @@ Identity Manager schema types should use the _VI.Projector.Database.DatabaseSche
 
 Each schema requires at least one schema type.
 
+**Note**: every Identity Manager schema should include the QBMVTableRevision type, to support revision tracking.
 
 ## Add properties to a schema type
 

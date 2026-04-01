@@ -27,6 +27,8 @@ Creating a synchronization project includes the following steps:
 10. create start info and schedule, see [StartInfos.md](docs/StartInfos.md)
 11. mark project construction as complete, see [Project.md](docs/Project.md)
 
+To perform synchronization with the new project, the connector DLL must be present on the Identity Manager job server specified in the start info object.  SPEd can facilitate this via the _file insert_ command.  See [FileUpload.md](docs/FileUpload.md).
+
 
 ## Updating objects with SPEd
 

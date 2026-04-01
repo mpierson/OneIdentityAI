@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/go-viper/mapstructure/v2"
 )
@@ -14,6 +15,17 @@ type Specials struct {
 	XDateUpdated  sql.NullTime
 	XUserUpdated  sql.NullString
 	XObjectKey    string
+}
+
+func NewSpecials(XObjectKey string, user string) Specials {
+	ts := time.Now()
+	return Specials{
+		XDateInserted: sql.NullTime{Time: ts.UTC(), Valid: true},
+		XUserInserted: sql.NullString{String: user, Valid: true},
+		XDateUpdated:  sql.NullTime{Time: ts.UTC(), Valid: true},
+		XUserUpdated:  sql.NullString{String: user, Valid: true},
+		XObjectKey:    XObjectKey,
+	}
 }
 
 // attributes with create/update metadata

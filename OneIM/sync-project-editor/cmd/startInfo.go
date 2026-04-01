@@ -404,3 +404,36 @@ func addRootObjToStartInfo(c *cobra.Command, db *sqlx.DB) error {
 
 	return nil
 }
+
+var RunStartInfoCmd = createDPRCommand(
+	"run",
+	"run synchronization",
+	`Start a synchronization as configured in given start info.`,
+	[]string{"shell", "id"},
+	runStartInfo,
+)
+
+func runStartInfo(c *cobra.Command, db *sqlx.DB) error {
+
+	shellId, err := GetStructId_MustExist[DPRShell](c, "shell", db)
+	if err != nil {
+		return err
+	}
+
+	startInfoId, err := GetStructId_MustExist[DPRProjectionStartInfo](c, "id", db)
+	if err != nil {
+		return err
+	}
+	startInfo, err := dbx.GetStructSingleton[DPRProjectionStartInfo](db, startInfoId)
+	if err != nil {
+		return err
+	} else if startInfo.UID_DPRShell != shellId {
+		return errors.New("Shell / start info mismatch")
+	}
+
+	wc := fmt.Sprintf(`XObjectKey=''%s''`, startInfo.Specials.XObjectKey)
+	return FireDBEvent(db, "DPRProjectionStartInfo", wc, "RUN", 5)
+
+	// TODO: check for success?
+
+}

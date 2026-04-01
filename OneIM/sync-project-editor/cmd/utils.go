@@ -76,6 +76,9 @@ func GetHeading(buf map[string]interface{}) string {
 	if name == nil {
 		name = buf["DisplayNameQualified"]
 	}
+	if name == nil {
+		name = buf["DisplayValue"]
+	}
 
 	separator := " : "
 	desc := buf["Description"]
@@ -498,5 +501,22 @@ func GetTableColumns(db *sqlx.DB, table string) ([][2]string, error) {
 	}
 
 	return cols, nil
+}
 
+func FireDBEvent(db *sqlx.DB, objectType string, whereClause string, eventName string, priority int) error {
+
+	genProcId, err := dbx.GetNewId(db)
+	if err != nil {
+		return err
+	}
+
+	q := fmt.Sprintf(`exec QBM_PJobCreate_HOFireEvent
+        @objecttype = '%s',
+        @whereclause = '%s' , 
+		@EventName = '%s',
+        @priority = %v,
+        @GenProcID = '%s'`, objectType, whereClause, eventName, priority, genProcId)
+	_, err = db.Exec(q)
+
+	return err
 }

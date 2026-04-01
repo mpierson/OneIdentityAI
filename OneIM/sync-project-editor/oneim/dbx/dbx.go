@@ -3,6 +3,7 @@ package dbx
 import (
 	//    "database/sql"
 
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/jimsmart/schema"
 	"github.com/jmoiron/sqlx"
@@ -73,11 +75,11 @@ type DBID struct {
 
 func GetNewId(db *sqlx.DB) (string, error) {
 	var id string
-	err := db.Get(&id, "SELECT id=CONVERT(varchar(255), newid())")
+	err := db.Get(&id, "SELECT id=REPLACE(CONVERT(varchar(255), newid()), '-', '')")
 	if err != nil {
 		return "", err
 	}
-	return id, nil
+	return "CCC-" + id, nil
 }
 
 func GetTableValue(db *sqlx.DB, table string, column string, whereClause string) (string, error) {
@@ -315,4 +317,30 @@ func GetTableColumns(db *sqlx.DB, table string) ([][2]string, error) {
 	}
 
 	return cols, nil
+}
+
+func WaitForDBResult(db *sqlx.DB, ctx context.Context, dbFunc func(db *sqlx.DB) (bool, error), interval time.Duration) error {
+
+	timer := time.NewTimer(interval)
+	defer timer.Stop()
+
+	// Start polling until the context is done
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.New("timeout waiting for SQL task")
+		case <-timer.C:
+			result, err := dbFunc(db)
+			if err != nil {
+				return nil
+			}
+			if result {
+				return nil
+			} else {
+			}
+			timer.Reset(interval)
+		}
+	}
+
+	return nil
 }

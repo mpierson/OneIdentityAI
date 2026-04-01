@@ -7,6 +7,10 @@ Classes:
 - DPRSystemVariableSet: container for individual variables
 - DPRSystemVariable: variable's name-value pair, plus metadata
 
+Custom connector projects should include a DPRSystemVariable for each connection parameter in the connector definition XML document. 
+
+**Note**: the FolderContainingDLLs variable may vary for each Identity Manager instance, but a suitable default is _c:\Program Files\One Identity\One Identity Manager_ .
+
 
 ## Create a new variable set
 
