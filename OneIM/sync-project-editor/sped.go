@@ -402,6 +402,11 @@ func init() {
 	cmd.RunStartInfoCmd.Flags().StringP("id", "i", "", "StartInfo identifier")
 	cmd.RunStartInfoCmd.MarkFlagRequired("id")
 	cmd.StartInfoCmd.AddCommand(cmd.RunStartInfoCmd)
+	cmd.GetRunStatusCmd.Flags().StringP("id", "i", "", "StartInfo identifier")
+	cmd.GetRunStatusCmd.MarkFlagRequired("id")
+	cmd.GetRunStatusCmd.Flags().StringP("job-id", "j", "", "synchronization job identifier (UID_Job)")
+	cmd.GetRunStatusCmd.MarkFlagRequired("job-id")
+	cmd.StartInfoCmd.AddCommand(cmd.GetRunStatusCmd)
 
 	rootCmd.AddCommand(cmd.ScheduleCmd)
 	cmd.ScheduleCmd.AddCommand(cmd.ShowScheduleCmd)

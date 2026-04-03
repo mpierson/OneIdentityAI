@@ -120,11 +120,11 @@ func insertFile(c *cobra.Command, db *sqlx.DB) error {
 	defer cancel()
 
 	// wait for job server task(s) to complete
-	err = waitForTaskStart(db, ctx, "TaskName='CheckAndUpdate'")
+	err = WaitForTaskStart(db, ctx, "TaskName='CheckAndUpdate'", 2*time.Second)
 	if err != nil {
 		return err
 	}
-	err = waitForTaskFinish(db, ctx, "TaskName='CheckAndUpdate'")
+	err = WaitForTaskFinish(db, ctx, "TaskName='CheckAndUpdate'", 10*time.Second)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func insertFile(c *cobra.Command, db *sqlx.DB) error {
 
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*90)
 	defer cancel()
-	err = waitForTaskFinish(db, ctx, "TaskName='CallMethod' AND JobChainName like '%%UpdateModuleInfo%%'")
+	err = WaitForTaskFinish(db, ctx, "TaskName='CallMethod' AND JobChainName like '%%UpdateModuleInfo%%'", 10*time.Second)
 	if err != nil {
 		return err
 	}
@@ -151,11 +151,11 @@ func insertFile(c *cobra.Command, db *sqlx.DB) error {
 	defer cancel()
 
 	// wait for job server task(s) to complete
-	err = waitForTaskStart(db, ctx, "TaskName='CheckAndUpdate'")
+	err = WaitForTaskStart(db, ctx, "TaskName='CheckAndUpdate'", 2*time.Second)
 	if err != nil {
 		return err
 	}
-	err = waitForTaskFinish(db, ctx, "TaskName='CheckAndUpdate'")
+	err = WaitForTaskFinish(db, ctx, "TaskName='CheckAndUpdate'", 10*time.Second)
 	if err != nil {
 		return err
 	}
@@ -338,31 +338,4 @@ func syncFiles(c *cobra.Command, db *sqlx.DB) error {
 
 	wc = fmt.Sprintf(`XObjectKey=''%s''`, server.Specials.XObjectKey)
 	return FireDBEvent(db, "QBMServer", wc, "CheckVersion", 2)
-}
-
-func waitForTaskStart(db *sqlx.DB, ctx context.Context, whereClause string) error {
-
-	jobQueueCheck := func(db *sqlx.DB) (bool, error) {
-		nTasks, err := dbx.GetTableCount(db, "JobQueue", whereClause)
-		if err != nil {
-			return false, err
-		}
-		return (nTasks > 0), nil
-	}
-
-	interval := 5 * time.Second
-	return dbx.WaitForDBResult(db, ctx, jobQueueCheck, interval)
-}
-
-func waitForTaskFinish(db *sqlx.DB, ctx context.Context, whereClause string) error {
-	jobQueueCheck := func(db *sqlx.DB) (bool, error) {
-		nTasks, err := dbx.GetTableCount(db, "JobQueue", whereClause)
-		if err != nil {
-			return false, err
-		}
-		return (nTasks == 0), nil
-	}
-
-	interval := 5 * time.Second
-	return dbx.WaitForDBResult(db, ctx, jobQueueCheck, interval)
 }

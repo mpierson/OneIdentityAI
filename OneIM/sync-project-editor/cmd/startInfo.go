@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
@@ -432,8 +433,108 @@ func runStartInfo(c *cobra.Command, db *sqlx.DB) error {
 	}
 
 	wc := fmt.Sprintf(`XObjectKey=''%s''`, startInfo.Specials.XObjectKey)
-	return FireDBEvent(db, "DPRProjectionStartInfo", wc, "RUN", 5)
+	err = FireDBEvent(db, "DPRProjectionStartInfo", wc, "RUN", 5)
+	if err != nil {
+		return err
+	}
 
-	// TODO: check for success?
+	// check for completed event handler (task should be present after running stored proc above)
+	wc = fmt.Sprintf(`JobChainName like 'Created by QBMDBQueueProcess: fire event RUN for object type DPRProjectionStartInfo'
+					  AND TaskName = 'FireGenEvent'
+					  AND ParamIN like '%%%s%%'`,
+		startInfo.Specials.XObjectKey)
+	task, err := GetTask(db, wc)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*90)
+	defer cancel()
+	wc = fmt.Sprintf(`UID_Job='%s' AND Ready2EXE<>'DELETE'`, task.UID_Job)
+	WaitForTaskFinish(db, ctx, wc, 2*time.Second)
 
+	// task was successful?
+	wc = fmt.Sprintf(`UID_Job='%s'`, task.UID_Job)
+	task, err = GetTask(db, wc)
+	if err != nil {
+		return err
+	} else if task.Ready2EXE == "DELETE" {
+		// task is complete, check for errors
+		if task.ErrorMessages != nil {
+			fmt.Println("Failed to start sync: \n" + *task.ErrorMessages)
+			return nil
+		}
+		// otherwise, good to carry on
+	} else {
+		fmt.Println("Failed to start sync: \n" + "  task state: " + task.Ready2EXE)
+		return nil
+	}
+
+	// fetch sync task
+	wc = fmt.Sprintf(`TaskName='FullProjection' AND BasisObjectKey='%s'`, startInfo.Specials.XObjectKey)
+	task, err = GetTask(db, wc)
+	if err != nil {
+		return err
+	}
+	// wait for task to start
+	wc = fmt.Sprintf(`UID_Job='%s' AND Ready2EXE<>'TRUE'`, task.UID_Job)
+	err = WaitForTaskStart(db, ctx, wc, 2*time.Second)
+	if err != nil {
+		return err
+	}
+
+	// sync started successfully?
+	wc = fmt.Sprintf(`UID_Job='%s'`, task.UID_Job)
+	task, err = GetTask(db, wc)
+	if err != nil {
+		return err
+	} else if task.Ready2EXE == "PROCESSING" {
+		fmt.Println(task.UID_Job)
+	} else {
+		fmt.Println(`Failed to start sync: \n%v`, task.ErrorMessages)
+		return nil
+	}
+
+	return nil
+}
+
+var GetRunStatusCmd = createDPRCommand(
+	"sync-status",
+	"fetch status of a running sync",
+	`Fetch status of a running sync for the given start info.`,
+	[]string{"shell", "id", "job-id"},
+	runStatus,
+)
+
+func runStatus(c *cobra.Command, db *sqlx.DB) error {
+
+	shellId, err := GetStructId_MustExist[DPRShell](c, "shell", db)
+	if err != nil {
+		return err
+	}
+
+	startInfoId, err := GetStructId_MustExist[DPRProjectionStartInfo](c, "id", db)
+	if err != nil {
+		return err
+	}
+	startInfo, err := dbx.GetStructSingleton[DPRProjectionStartInfo](db, startInfoId)
+	if err != nil {
+		return err
+	} else if startInfo.UID_DPRShell != shellId {
+		return errors.New("Shell / start info mismatch")
+	}
+
+	jobId, _ := c.Flags().GetString("job-id")
+	if !IsValidIdOrName(jobId) {
+		return errors.New("invalid job id: " + jobId)
+	}
+
+	// get journal
+	j, err := GetJournalMessages(db, startInfoId, jobId)
+	if err != nil {
+		fmt.Println("no status found")
+		return err
+	}
+	fmt.Println(*j.ProjectionState)
+
+	return nil
 }

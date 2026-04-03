@@ -66,7 +66,7 @@ sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
 
 ## Root Object
 
-Some synchronizations target a specific system or domain in Identity Manager, e.g. synchronization of an Active Directory domain. Other synchronizations are not specific to a target system, e.g. synchronization of a Human Resource system into Identity Manager.  All scheduled synchronization events require a target object.
+Synchronizations may target a specific system or domain in Identity Manager, e.g. synchronization of an Active Directory domain. Other synchronizations are not specific to a target system, e.g. synchronization of a Human Resource system into Identity Manager.  All scheduled synchronization events require a target object.
 
 For synchronization of an Active Directory domain, LDAP domain, or a generic target system represented in Identity Manager's UNS tables, the root object will correspond to the systems UNSRoot record (ADSDomain, LDAPDomain, UNSRootB, ...).
 
@@ -83,6 +83,7 @@ sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
 
 Parameters
 
+- shell: UID\_DPRShell of synchronization project
 - id: UID\_DPRProjectionStartInfo of the start info object
 - root-object-key: XObjectKey of the root object (ADSDomain, LDAPDomain, UNSRootB, etc.)
 - connection-id: UID\_DPRSystemConnection of the connection to the target system associated with root object
@@ -126,16 +127,34 @@ and exists (
 order by s.LastJobFetchTime desc
 ```
 
+## Running synchronization
 
-# Mark synchronization project as complete
-
-The _IsFinalized_ attribute of a synchronization project's DPRShell record indicates the state of the project.  A value of _3_ indicates the project is ready to be used.
-
-Update the project with `IsFinalized = 3` when all other steps are complete. 
+The _start-info run_ command initiates a synchronization event in Identity Manager, and if successful returns a synchronization job identifier.  The job identifier can be used to fetch status of the synchronization using the _start-info sync-status_ command.
 
 ```bash
-sped -C my_db.yaml shell update --id '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
-                                --content '{"IsFinalized": 3}'
+sped -C my_db.yaml start-info --shell CCC-90426A03CA40354E930643DB36C87870 \
+        run --id CCC-1AB568FD2BF4C04782887CE2F5015DAA
 ```
 
+Parameters
 
+- shell: UID\_DPRShell of synchronization project
+- id: UID\_DPRProjectionStartInfo of the start info object
+
+**Note**: this command typically takes 1-2 minutes to complete, and the synchronization may take many minutes or hours to complete.
+
+
+To check the status of a synchronization:
+
+```bash
+sped -C my_db.yaml start-info --shell CCC-90426A03CA40354E930643DB36C87870 \
+        sync-status --id CCC-1AB568FD2BF4C04782887CE2F5015DAA --job-id d0df1e18-aa6d-468f-94dc-ef5da4141dd7
+```
+
+Parameters
+
+- shell: UID\_DPRShell of synchronization project
+- id: UID\_DPRProjectionStartInfo of the start info object
+- job-id: UID\_Job of a running synchronization, as returned by the _start-info run_ command
+
+**Note**: the _sync-status_ command returns "Success" for a successfully complated synchronization; it may take up to a minute for synchronization status to be available.
