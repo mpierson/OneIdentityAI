@@ -132,8 +132,8 @@ order by s.LastJobFetchTime desc
 The _start-info run_ command initiates a synchronization event in Identity Manager, and if successful returns a synchronization job identifier.  The job identifier can be used to fetch status of the synchronization using the _start-info sync-status_ command.
 
 ```bash
-sped -C my_db.yaml start-info --shell CCC-90426A03CA40354E930643DB36C87870 \
-        run --id CCC-1AB568FD2BF4C04782887CE2F5015DAA
+sped -C my_db.yaml start-info --shell 'CCC-90426A03CA40354E930643DB36C87870' \
+        run --id 'CCC-1AB568FD2BF4C04782887CE2F5015DAA'
 ```
 
 Parameters
@@ -147,8 +147,8 @@ Parameters
 To check the status of a synchronization:
 
 ```bash
-sped -C my_db.yaml start-info --shell CCC-90426A03CA40354E930643DB36C87870 \
-        sync-status --id CCC-1AB568FD2BF4C04782887CE2F5015DAA --job-id d0df1e18-aa6d-468f-94dc-ef5da4141dd7
+sped -C my_db.yaml start-info --shell 'CCC-90426A03CA40354E930643DB36C87870' \
+        sync-status --id 'CCC-1AB568FD2BF4C04782887CE2F5015DAA' --job-id 'd0df1e18-aa6d-468f-94dc-ef5da4141dd7'
 ```
 
 Parameters
