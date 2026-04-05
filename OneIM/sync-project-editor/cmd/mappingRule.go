@@ -84,7 +84,7 @@ func fillMappingRuleData(db *sqlx.DB, t *DPRSystemMappingRule) error {
 
 var InsertMappingRuleCmd = CreateInsertCommand(
 	"create a new synchronization mapping rule",
-	`Create a new sync mapping rule (DPRSystemMappingRule).`,
+	`Create a new synchronization attribute mapping rule (DPRSystemMappingRule) and return the UID_DPRSystemMappingRule of the new rule.`,
 	[]string{"map-id", "name", "left-property", "right-property", "direction"},
 	insertMappingRule,
 )
@@ -137,8 +137,8 @@ func newMappingRule(
 
 var AddKeyBasedRuleCmd = createDPRCommand(
 	"add-key-based-rule",
-	"create a new key-based lookup mapping rule",
-	`Create a new sync matching rule (DPRSystemMappingRule), with key-based lookup.`,
+	"create a key-based lookup mapping rule",
+	`Create a new key-based synchronization mapping rule (DPRSystemMappingRule) and return the UID_DPRSystemMappingRule of the new rule.`,
 	[]string{
 		"map-id", "name",
 		"left-property", "right-property",
@@ -213,7 +213,7 @@ func newKeyBasedMappingRule(
 var InsertMatchingRuleCmd = createDPRCommand(
 	"insert-matching-rule",
 	"create a new synchronization object mapping rule",
-	`Create a new sync matching rule (DPRSystemMappingRule).`,
+	`Create a new synchronization object matching rule (DPRSystemMappingRule) and return the UID_DPRSystemMappingRule of the new rule.`,
 	[]string{"map-id", "name", "left-property", "right-property"},
 	insertMatchingRule,
 )

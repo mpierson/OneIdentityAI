@@ -63,8 +63,8 @@ func fillVariableSetData(db *sqlx.DB, t *DPRSystemVariableSet) error {
 }
 
 var InsertVariableSetCmd = CreateInsertCommand(
-	"create a new synchronization variable set",
-	`Create a new sync Connection (DPRSystemVariableSet).`,
+	"create a new variable set",
+	`Create a new synchronization variable set (DPRSystemVariableSet) and return the UID_DPRSystemVariableSet of the new set.`,
 	[]string{"shell", "name"},
 	insertVariableSet,
 )

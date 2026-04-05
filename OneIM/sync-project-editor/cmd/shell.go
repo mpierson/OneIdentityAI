@@ -76,7 +76,7 @@ func fillShellData(db *sqlx.DB, shell *DPRShell) error {
 
 var InsertShellCmd = CreateInsertCommand(
 	"create a new synchronization project",
-	`Create a new sync project (DPRShell).`,
+	`Create a new sync project (DPRShell) and return the UID_DPRShell of the new project.`,
 	[]string{"name"},
 	insertShell,
 )

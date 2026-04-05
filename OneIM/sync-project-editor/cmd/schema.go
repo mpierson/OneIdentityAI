@@ -70,7 +70,7 @@ func fillSchemaData(db *sqlx.DB, t *DPRSchema) error {
 
 var InsertSchemaCmd = CreateInsertCommand(
 	"create a new synchronization schema",
-	`Create a new sync schema (DPRSchema).`,
+	`Create a new synchronization schema (DPRSchema) and return the UID_DPRSchema of the new schema.`,
 	[]string{"shell", "name", "system-id", "clr-name"},
 	insertSchema,
 )
@@ -123,7 +123,7 @@ func newSchemaInternal(
 var InsertOneIMSchemaCmd = CreateBaseCommand(
 	"insert-oneim-schema",
 	"create a new synchronization schema for the OneIM database",
-	`Create a new sync schema for Identity Manager (DPRSchema).`,
+	`Create a new synchronization schema for Identity Manager (DPRSchema) and return the UID_Schema of the new schema.`,
 	insertOneIMSchema,
 )
 

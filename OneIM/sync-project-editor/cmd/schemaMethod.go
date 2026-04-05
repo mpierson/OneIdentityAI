@@ -68,7 +68,7 @@ func fillSchemaMethodData(db *sqlx.DB, t *DPRSchemaMethod) error {
 
 var InsertSchemaMethodCmd = CreateInsertCommand(
 	"create a new synchronization schema method",
-	`Create a new sync schema method (DPRSchemaMethod).`,
+	`Create a new synchronization schema method (DPRSchemaMethod) and return the UID_DPRSchemaMethod of the new method.`,
 	[]string{"schema-type-id", "name", "clr-name"},
 	insertSchemaMethod,
 )

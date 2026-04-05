@@ -67,7 +67,7 @@ func fillSchemaPropertyData(db *sqlx.DB, t *DPRSchemaProperty) error {
 
 var InsertSchemaPropertyCmd = CreateInsertCommand(
 	"create a new synchronization schema property",
-	`Create a new sync schema property (DPRSchemaProperty).`,
+	`Create a new synchronization schema property (DPRSchemaProperty) and return the UID_DPRSchemaProperty of the new property.`,
 	[]string{"schema-type-id", "name", "clr-name", "data-type"},
 	insertSchemaProperty,
 )

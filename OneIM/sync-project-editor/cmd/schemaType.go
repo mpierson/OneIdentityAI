@@ -77,7 +77,7 @@ func fillSchemaTypeData(db *sqlx.DB, t *DPRSchemaType) error {
 
 var InsertSchemaTypeCmd = CreateInsertCommand(
 	"create a new synchronization schema type",
-	`Create a new sync schema type (DPRSchemaType).`,
+	`Create a new synchronization schema type (DPRSchemaType) and return the UID_DPRSchemaType of the new type.`,
 	[]string{"schema-id", "name", "clr-name"},
 	insertSchemaType,
 )
@@ -254,7 +254,7 @@ func addPropertyToSchemaType(db *sqlx.DB, typeId string, cName string, cType str
 var AddDefaultSchemaClassCmd = createDPRCommand(
 	"add-default-class",
 	"add the default 'all' class to a schema type",
-	`Add default unfiltered 'all' class to schema type (DPRSchemaProperty).`,
+	`Add the default unfiltered 'all' class (DPRSchemaClass) to a schema type and return the UID_DPRSchemaClass of the new class.`,
 	[]string{"id"},
 	addDefaultClassToSchemaType,
 )

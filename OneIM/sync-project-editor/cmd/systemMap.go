@@ -78,7 +78,7 @@ func fillMapData(db *sqlx.DB, t *DPRSystemMap) error {
 
 var InsertSystemMapCmd = CreateInsertCommand(
 	"create a new synchronization map",
-	`Create a new sync map (DPRSystemMap).`,
+	`Create a new schema class attribute map (DPRSystemMap) and return the UID_DPRSystemMap of the new map.`,
 	[]string{"shell", "name", "left-schema-class-id", "right-schema-class-id"},
 	insertMap,
 )
@@ -150,7 +150,7 @@ func newSystemMap(
 var InsertSystemMapByNameCmd = CreateBaseCommand(
 	"insert-by-name",
 	"create a new synchronization map",
-	`Create a new sync map (DPRSystemMap).`,
+	`Create a new schema class attribute map (DPRSystemMap), referencing classes by name, and return the UID_DPRSystemMap of the new map.`,
 	insertMapByName,
 )
 

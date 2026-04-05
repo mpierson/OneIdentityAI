@@ -82,8 +82,8 @@ func fillConnectionData(db *sqlx.DB, t *DPRSystemConnection) error {
 }
 
 var InsertConnectionCmd = CreateInsertCommand(
-	"create a new synchronization Connection",
-	`Create a new sync Connection (DPRSystemConnection).`,
+	"create a new synchronization connection",
+	`Create a new synchronization connection (DPRSystemConnection), and return the UID_DPRSystemConnection of the new connection.`,
 	[]string{"shell", "name", "schema-id"},
 	insertConnection,
 )
@@ -192,8 +192,8 @@ func newConnection(
 
 var InsertOneIMConnectionCmd = CreateBaseCommand(
 	"insert-oneim-connection",
-	"create a new synchronization Connection for OneIM",
-	`Create a new sync connection for Identity Manager (DPRSystemConnection).`,
+	"create a new synchronization connection for Identity Manager",
+	`Create a new synchronization connection (DPRSystemConnection) for Identity Manager and return the UID_DPRSystemConnection of the new connection.`,
 	insertOneIMConnection,
 )
 
@@ -233,8 +233,8 @@ func newOneIMConnection(
 
 var InsertTargetSystemConnectionCmd = CreateBaseCommand(
 	"insert-target-system-connection",
-	"create a new synchronization Connection for target system",
-	`Create a new sync connection for a target system (DPRSystemConnection).`,
+	"create a new synchronization connection for a target system",
+	`Create a new synchronization connection (DPRSystemConnection) for a target system and return the UID_DPRSystemConnection of the new connection.`,
 	insertTargetSystemConnection,
 )
 
