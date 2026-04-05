@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sped *)",
+      "Bash(SPED_PASSWORD=* sped *)",
+      "Bash(dotnet *)",
+      "Bash(java *)",
+      "Bash(base64 *)",
+      "Bash(sqlcmd *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+    ]
+  }
+}

@@ -12,9 +12,6 @@ Parameters
 - file-name: full path of file to be inserted into Identity Manager database
 - file-version: version string associated with file; should correspond to the version present in the connector DLL file metadata
 
-**Note**:  Identity Manager's internal processing of the new file may take several minutes to complete. 
+**Note**:  Identity Manager's internal processing of the new file may take 5 to 10 minutes to complete. 
 
 
-## Update existing file
-
-TODO
