@@ -7,8 +7,9 @@
       "Bash(java *)",
       "Bash(base64 *)",
       "Bash(sqlcmd *)",
+      "Bash(curl *)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }
