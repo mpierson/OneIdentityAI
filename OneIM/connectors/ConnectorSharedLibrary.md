@@ -25,7 +25,10 @@ public static ParameterDef[] ConfigParameters()
 
 ```
 
-**Note**: individual parameters are preferred over multi-value combined parameters, e.g. use host, port, database name, instead of a single connection string.
+**Notes**: 
+
+- individual parameters are preferred over multi-value combined parameters, e.g. use host, port, database name, instead of a single connection string.
+- use an appropriate prefix on parameter names to avoid conflicts with Powershell reserved words; e.g. use _acme\_host_ instead of _host_
 
 
 

@@ -4,8 +4,8 @@
   Transform One Identity Manager connector description to a PowerShell connector definition
 
   Author: M Pierson
-  Date: Nov 2025
-  Version: 0.1
+  Date: April 2026
+  Version: 0.2
 
   Use ConectorConfiguration.exe to generate source XML
 
@@ -64,6 +64,7 @@
                  <xsl:text><![CDATA[
                     )
 
+                   try {
                     $path = $FolderContainingDLLs
                     $arDLLs = $CommaSeparatedDLLNames.Split(",")
                     foreach ($dll in $arDLLs)
@@ -84,6 +85,11 @@
 
                      $global:connector.Configure($params)
                      $global:connector.Connect()
+                    }
+                    catch {
+                        Write-Error "Failed to initialize connector: $($_.Exception.Message)"
+                        throw $_
+                    }
              ]]></xsl:text>
 
               </CustomCommand>
@@ -134,9 +140,12 @@
  </xsl:template>
  <xsl:template match="Parameter" mode="CommandParameter">
      <xsl:text><![CDATA[
-                   [parameter(Mandatory =$true, ValueFromPipelineByPropertyName =$true)]
+                   [parameter(Mandatory =]]></xsl:text>
+     <xsl:value-of select="if (@required='true') then '$true' else '$false'" />
+     <xsl:text><![CDATA[, ValueFromPipelineByPropertyName =$true)]
                    [ValidateNotNullOrEmpty()]
-     ]]></xsl:text><xsl:value-of select="concat(
+     ]]></xsl:text>
+     <xsl:value-of select="concat(
                     '[', ois:get-powershell-type(@type), ']$', @name,
                     if ( position() &lt; last() ) then ',' else ''
             )" />
@@ -152,12 +161,15 @@
      <xsl:variable name="class-name" select="ois:get-class-name(@name)" />
 
       <!-- GET ALL -->
+      <xsl:if test="@listMethod != ''">
       <CustomCommand>
           <xsl:attribute name="Name" select="@listMethod" />
           <xsl:value-of select="concat('$global:connector.', @listMethod, '()&#xa;')" />
       </CustomCommand>              
+      </xsl:if>
 
       <!-- GET -->
+      <xsl:if test="@getMethod != ''">
       <CustomCommand>
           <xsl:attribute name="Name" select="@getMethod" />
           <![CDATA[
@@ -169,8 +181,10 @@
           ]]> 
           <xsl:value-of select="concat('$global:connector.', @getMethod, '($Id)&#xa;')" />
       </CustomCommand>              
+      </xsl:if>
 
       <!-- CREATE -->
+      <xsl:if test="@createMethod != ''">
       <CustomCommand>
           <xsl:attribute name="Name" select="@createMethod" />
           <![CDATA[
@@ -189,8 +203,10 @@
          ]]></xsl:text>
          <xsl:value-of select="concat('$global:connector.', @createMethod, '($Id, $attrs)&#xa;')" />
       </CustomCommand>              
+      </xsl:if>
 
       <!-- UPDATE -->
+      <xsl:if test="@updateMethod != ''">
       <CustomCommand>
           <xsl:attribute name="Name" select="@updateMethod" />
           <![CDATA[
@@ -209,8 +225,10 @@
          ]]></xsl:text>
          <xsl:value-of select="concat('$global:connector.', @updateMethod, '($Id, $attrs)&#xa;')" />
       </CustomCommand>              
+      </xsl:if>
 
       <!-- DELETE -->
+      <xsl:if test="@deleteMethod != ''">
       <CustomCommand>
           <xsl:attribute name="Name" select="@deleteMethod" />
          <xsl:text><![CDATA[
@@ -222,8 +240,10 @@
           )
 
          ]]></xsl:text>
-         <xsl:value-of select="concat('$global:connector.Delete', $class-name, '($Id)&#xa;')" />
+         <xsl:value-of select="concat('$global:connector.', @deleteMethod, '($Id)&#xa;')" />
       </CustomCommand>              
+      </xsl:if>
+
  </xsl:template>
 
  <xsl:template match="Attribute" mode="command-argument">
@@ -261,17 +281,22 @@
              <xsl:apply-templates select="Attribute" mode="schema-property" />
         </Properties>
         <ReadConfiguration>
+            <xsl:if test="@listMethod != ''">
             <ListingCommand>
                 <xsl:attribute name="Command" select="@listMethod" />
             </ListingCommand>
+            </xsl:if>
+            <xsl:if test="@getMethod != ''">
             <CommandSequence>
                 <Item Order="1">
                     <xsl:attribute name="Command" select="@getMethod" />
                 </Item>
             </CommandSequence>
+            </xsl:if>
         </ReadConfiguration>
 
       <MethodConfiguration>
+        <xsl:if test="@createMethod != ''">
         <Method Name="Insert">
           <CommandSequence>
               <Item Order="1">
@@ -279,6 +304,8 @@
               </Item>
           </CommandSequence>
         </Method>
+        </xsl:if>
+        <xsl:if test="@updateMethod != ''">
         <Method Name="Update">
           <CommandSequence>
               <Item Order="1">
@@ -286,6 +313,8 @@
               </Item>
           </CommandSequence>
         </Method>
+        </xsl:if>
+        <xsl:if test="@deleteMethod != ''">
         <Method Name="Delete">
           <CommandSequence>
               <Item Order="1">
@@ -293,6 +322,7 @@
               </Item>
           </CommandSequence>
         </Method>
+        </xsl:if>
       </MethodConfiguration>
      </Class>
 
@@ -306,43 +336,51 @@
          <xsl:attribute name="IsMandatory" select="ois:get-boolean(@required)" />
          <CommandMappings>
              <xsl:if test="@name = 'Id'">
+                 <xsl:if test="../@getMethod != ''">
                  <Map>
                      <xsl:attribute name="Parameter" select="@name" />
                      <xsl:attribute name="ToCommand" select="../@getMethod" />
                  </Map>
-                 <Map>
-                     <xsl:attribute name="Parameter" select="@name" />
-                     <xsl:attribute name="ToCommand" select="../@updateMethod" />
-                 </Map>
+                 </xsl:if>
+                 <xsl:if test="../@deleteMethod != ''">
                  <Map>
                      <xsl:attribute name="Parameter" select="@name" />
                      <xsl:attribute name="ToCommand" select="../@deleteMethod" />
                  </Map>
              </xsl:if>
+             </xsl:if>
+             <xsl:if test="../@updateMethod != ''">
              <Map>
                  <xsl:attribute name="Parameter" select="@name" />
                  <xsl:attribute name="ToCommand" select="../@updateMethod" />
              </Map>
+             </xsl:if>
          </CommandMappings>
          <ReturnBindings>
-             <xsl:if test="@name = 'Id'">
+             <xsl:if test="@name = 'Id' and ../@listMethod != ''">
                  <Bind>
                      <xsl:attribute name="Path" select="@name" />
                      <xsl:attribute name="CommandResultOf" select="../@listMethod" />
                  </Bind>
              </xsl:if>
+             <xsl:if test="../@getMethod != ''">
              <Bind>
                  <xsl:attribute name="Path" select="@name" />
                  <xsl:attribute name="CommandResultOf" select="../@getMethod" />
              </Bind>
+             </xsl:if>
+             <xsl:if test="../@createMethod != ''">
              <Bind>
                  <xsl:attribute name="Path" select="@name" />
                  <xsl:attribute name="CommandResultOf" select="../@createMethod" />
              </Bind>
+             </xsl:if>
+             <xsl:if test="../@updateMethod != ''">
              <Bind>
                  <xsl:attribute name="Path" select="@name" />
                  <xsl:attribute name="CommandResultOf" select="../@updateMethod" />
              </Bind>
+             </xsl:if>
          </ReturnBindings>
      </Property>
  </xsl:template>
