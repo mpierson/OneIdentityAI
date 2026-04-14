@@ -33,13 +33,13 @@ var VariableCmd = CreateBaseCommand(
 var ShowVariableCmd = CreateShowCommand(
 	"show details of one synchronization start info",
 	`View sync project start info (DPRProjectionStartInfo).`,
-	[]string{"variable-set"},
+	[]string{"variable-set-id"},
 	showVariables,
 )
 
 func showVariables(c *cobra.Command, db *sqlx.DB) error {
 
-	vsId, _ := c.Flags().GetString("variable-set")
+	vsId, _ := c.Flags().GetString("variable-set-id")
 	if len(vsId) == 0 {
 		return errors.New("variable set id required")
 	}
@@ -62,7 +62,7 @@ func fillVariableData(db *sqlx.DB, t *DPRSystemVariable) error {
 var InsertVariableCmd = CreateInsertCommand(
 	"create a new synchronization variable",
 	`Create a new synchronization variable (DPRSystemVariable) and return the UID_SystemVariable of the new variable.`,
-	[]string{"variable-set", "name"},
+	[]string{"variable-set-id", "name"},
 	insertVariable,
 )
 
@@ -76,7 +76,7 @@ func newVariable(
 	clrId string,
 ) (*DPRSystemVariable, error) {
 
-	vsId, err := GetStructId_MustExist[DPRSystemVariableSet](c, "variable-set", db)
+	vsId, err := GetStructId_MustExist[DPRSystemVariableSet](c, "variable-set-id", db)
 	if err != nil {
 		return nil, err
 	}

@@ -81,8 +81,8 @@ func fillFileData(db *sqlx.DB, t *QBMFileRevision) error {
 }
 
 var InsertFileCmd = CreateInsertCommand(
-	"create a new synchronization start info",
-	`Create a new sync Connection (DPRProjectionStartInfo).`,
+	"insert a file in the database",
+	`Insert a file in the Identity Manager database (QBMFileRevision), and return the UID_QBMFileRevision of the new entry.`,
 	[]string{"file", "file-version"},
 	insertFile,
 )

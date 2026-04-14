@@ -128,7 +128,32 @@ var InsertOneIMSchemaCmd = CreateBaseCommand(
 )
 
 func insertOneIMSchema(c *cobra.Command, db *sqlx.DB) error {
-	return ExecInsertCommand[DPRSchema](c, db, "VI.Projector.Database.DatabaseSchema", newOneIMSchema)
+
+	var schemaId string
+	newFn := func(c *cobra.Command, db *sqlx.DB, id string, objectKey string, name string, clrId string) (*DPRSchema, error) {
+		schemaId = id
+		return newOneIMSchema(c, db, id, objectKey, name, clrId)
+	}
+	err := ExecInsertCommand[DPRSchema](c, db, "VI.Projector.Database.DatabaseSchema", newFn)
+	if err != nil {
+		return err
+	}
+
+	// add standard OneIM revision table
+	typeId, err := AddTypeToSchema(db, schemaId, "QBMVTableRevision", "VI.Projector.Database.DatabaseSchemaType")
+	if err != nil {
+		return err
+	}
+	err = AddPropertiesToSchemaType(db, typeId)
+	if err != nil {
+		return err
+	}
+	_, err = AddDefaultClassToSchemaType(db, typeId)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 func newOneIMSchema(
 	c *cobra.Command, db *sqlx.DB,
@@ -151,33 +176,67 @@ func newOneIMSchema(
 	}
 
 	sysId := fmt.Sprintf(`FTP#%s`, oneIMDB.UID_Database)
-	systemType := "OneIM"
-	systemVersion := fmt.Sprintf(`%s.0.0`, *oneIMDB.EditionVersion)
-	systemDisplay := "One Identity Manager"
-	nameFormat := "Identifier"
-	systemCapabilities := "SupportsRevisions"
-
-	t := DPRSchema{
-		UID_DPRSchema:  id,
-		UID_DPRShell:   shellId,
-		UID_QBMClrType: clrId,
-		Specials: oneim.Specials{
-			XObjectKey: objectKey,
-		},
-		Displayable: Displayable{
-			Name:        &name,
-			DisplayName: &name,
-		},
-		SystemId:           sysId,
-		SystemType:         &systemType,
-		SystemVersion:      &systemVersion,
-		SystemDisplay:      &systemDisplay,
-		NameFormat:         &nameFormat,
-		SystemCapabilities: &systemCapabilities,
-		FunctionalLevel:    2,
+	t, err := newSchemaInternal(db, id, objectKey, name, shellId, sysId, clrId)
+	if err != nil {
+		return nil, err
 	}
 
-	return &t, nil
+	systemType := "OneIM"
+	t.SystemType = &systemType
+
+	systemVersion := fmt.Sprintf(`%s.0.0`, *oneIMDB.EditionVersion)
+	t.SystemVersion = &systemVersion
+
+	systemDisplay := "One Identity Manager"
+	t.SystemDisplay = &systemDisplay
+
+	nameFormat := "Identifier"
+	t.NameFormat = &nameFormat
+
+	systemCapabilities := "SupportsRevisions"
+	t.SystemCapabilities = &systemCapabilities
+
+	t.FunctionalLevel = 2
+
+	return t, nil
+}
+
+var InsertCustomSchemaCmd = CreateBaseCommand(
+	"insert-target-schema",
+	"create a new synchronization schema for a target system",
+	`Create a new synchronization schema for a custom target system (DPRSchema) and return the UID_Schema of the new schema.`,
+	insertCustomSchema,
+)
+
+func insertCustomSchema(c *cobra.Command, db *sqlx.DB) error {
+	return ExecInsertCommand[DPRSchema](c, db, "VI.Projector.Powershell.PoshSchema", newCustomSchema)
+}
+func newCustomSchema(
+	c *cobra.Command, db *sqlx.DB,
+	id string, objectKey string, name string,
+	clrId string,
+) (*DPRSchema, error) {
+
+	if len(name) == 0 {
+		return nil, errors.New("Missing schema name")
+	}
+
+	shellId, err := GetStructId_MustExist[DPRShell](c, "shell", db)
+	if err != nil {
+		return nil, err
+	}
+
+	sysId, _ := c.Flags().GetString("system-id")
+	if !IsValidIdOrName(sysId) {
+		return nil, errors.New("Invalid system identifier: " + sysId)
+	}
+
+	t, err := newSchemaInternal(db, id, objectKey, name, shellId, sysId, clrId)
+	if err != nil {
+		return nil, err
+	}
+
+	return t, nil
 }
 
 var UpdateSchemaCmd = CreateUpdateCommand(
@@ -190,28 +249,50 @@ func updateSchema(c *cobra.Command, db *sqlx.DB) error {
 	return ExecUpdateCommand[DPRSchema](c, db)
 }
 
-func getSchema(db *sqlx.DB, shellId string, wc string) (DPRSchema, error) {
+func getSchema(db *sqlx.DB, shellId string, wc string) (*DPRSchema, error) {
 
 	var t DPRSchema
 	ts, err := dbx.GetStructData[DPRSchema](db, "DPRSchema", wc)
 	if err != nil {
-		return t, err
+		return &t, err
 	}
-	if len(ts) == 0 {
-		return t, errors.New("Schema not found in shell: " + shellId)
-	} else if len(ts) > 1 {
-		return t, errors.New(fmt.Sprintf("Too many schemas in shell %s", shellId))
+	if len(ts) == 0 && len(shellId) > 0 {
+		return &t, errors.New("Schema not found in shell: " + shellId)
+	} else if len(ts) > 1 && len(shellId) > 0 {
+		return &t, errors.New(fmt.Sprintf("Too many matching schemas in shell %s", shellId))
 	}
 
-	return ts[0], nil
+	return &ts[0], nil
 }
 
-func GetOneIMSchema(db *sqlx.DB, shellId string) (DPRSchema, error) {
+func GetSchema(db *sqlx.DB, schemaId string) (*DPRSchema, error) {
+	if !IsValidIdOrName(schemaId) {
+		return nil, errors.New("Invalid schema identifier: " + schemaId)
+	}
+	wc := fmt.Sprintf(`UID_DPRSchema='%s'`, schemaId)
+	return getSchema(db, "", wc)
+}
+
+func GetOneIMSchema(db *sqlx.DB, shellId string) (*DPRSchema, error) {
 	wc := fmt.Sprintf(`UID_DPRShell='%s' and SystemId like 'FTP#%%'`, shellId)
 	return getSchema(db, shellId, wc)
 }
 
-func GetTargetSystemSchema(db *sqlx.DB, shellId string) (DPRSchema, error) {
+func GetTargetSystemSchema(db *sqlx.DB, shellId string) (*DPRSchema, error) {
 	wc := fmt.Sprintf(`UID_DPRShell='%s' and not SystemId like 'FTP#%%'`, shellId)
 	return getSchema(db, shellId, wc)
+}
+
+// choose OneIM CLR or target system CLR, based on given schema type
+func GetCLRForTarget(db *sqlx.DB, schemaId string, oneIMCLR string, targetCLR string) (string, error) {
+
+	schema, err := GetSchema(db, schemaId)
+	if err != nil {
+		return "", err
+	}
+
+	if *schema.SystemType == "OneIM" {
+		return "VI.Projector.Database.DatabaseSchemaProperty", nil
+	}
+	return "VI.Projector.Powershell.PoshSchemaProperty", nil
 }

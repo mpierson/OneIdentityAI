@@ -5,13 +5,12 @@ Start Info objects define a scheduled synchronization event, including the follo
  - workflow
  - variable set
  - schedule
- - root object, if needed
+ - root object
 
 
 ```bash
 sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
         insert --name 'Full Synchronization' \
-               --variable-set-id 'B99711CF-27EE-484E-AA0C-392D5F76D78A' \
                --workflow-id 'CCC-7202478647387649AFE0B1E7F5351C22' \
                --direction 'ToTheLeft'
 ```
@@ -20,8 +19,6 @@ Parameters
 
 - shell: UID\_DPRSHell of the synchronization project
 - name: name of the new start info
-- variable-set-id: UID\_DPRSystemVariableSet of the variables to be used by synchronization
-- use-default-variables: assign the project's default variable set, instead of _variable-set-id_ flag
 - workflow-id: UID\_DPRProjectionConfig of the workflow to be used for synchronization
 - direction: synchronization direction, ToTheLeft or ToTheRight
 
@@ -29,10 +26,10 @@ Parameters
 Mapping direction notes:
 
 _ToTheLeft_
-: Synchronize from right to left, i.e. in to Identity Manager
+: Synchronize from right to left, i.e. data flows into Identity Manager
 
 _ToTheRight_
-: Synchronize from left to right, i.e. in to the target system
+: Synchronize from left to right, i.e. data flows into the target system
 
 
 ## Schedules
@@ -70,15 +67,12 @@ Synchronizations may target a specific system or domain in Identity Manager, e.g
 
 For synchronization of an Active Directory domain, LDAP domain, or a generic target system represented in Identity Manager's UNS tables, the root object will correspond to the systems UNSRoot record (ADSDomain, LDAPDomain, UNSRootB, ...).
 
-Add this type of root object to the start info with the _add-root-object_ sub-command:
 
 ```bash
 sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
         add-root-object --id '73C6842D-1CA5-468A-880E-5EF0C32DF4EA' \
-                        --root-object-key '<Key><T>UNSRootB</T><P>aa669e4f-3d82-4882-9bb1-d88f3e412a3c</P></Key>' \
-                        --connection-id 'CCC-1D6726110E33C941BBF9EE0C0480DB29' \
-                        --variable-set-id 'CCC-C6DEBD8334E97C4BB709639DF649FBD1' \
-                        --server-id '850649CD-003E-40CB-A1FD-F5D9C5C89529' 
+                        --server-name 'IAMS03' \
+                        --root-object-key '<Key><T>UNSRootB</T><P>aa669e4f-3d82-4882-9bb1-d88f3e412a3c</P></Key>'
 ```
 
 Parameters
@@ -86,34 +80,23 @@ Parameters
 - shell: UID\_DPRShell of synchronization project
 - id: UID\_DPRProjectionStartInfo of the start info object
 - root-object-key: XObjectKey of the root object (ADSDomain, LDAPDomain, UNSRootB, etc.)
-- connection-id: UID\_DPRSystemConnection of the connection to the target system associated with root object
-- variable-set-id: UID\_DPRSystemVariableSet of the variables to be used with root object
-- server-id: UID\_QBMServer of the Identity Manager job server that will perform the synchronization
+- server-name: name of the Identity Manager job server that will perform the synchronization
+
+See **Identifying a job server for synchronization** below for help selecting an appropriate job server.
 
 
-Use the _use-default-connection_ flag to use the default target system connection to build the root object.  Use the _use-default-variables_ flag to use the default variable set.  Use the _server-name_ flag to reference a job server by name.
-
-```bash
-sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
-        add-root-object --id '73C6842D-1CA5-468A-880E-5EF0C32DF4EA' \
-                        --use-default-connection \
-                        --use-default-variables \
-                        --server-name 'IAMS03' \
-                        --root-object-key '<Key><T>UNSRootB</T><P>aa669e4f-3d82-4882-9bb1-d88f3e412a3c</P></Key>'
-```
-
-For synchronization projects that use a target table instead of a target system, use the _table-name_ flag instead of the _root-object-key_ flag:
+For projects that synchronize a Human Resource system, a target table is used instead of a single target record. For this type of synchronization use the _table-name_ flag instead of the _root-object-key_ flag:
 
 ```bash
 sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
         add-root-object --id '73C6842D-1CA5-468A-880E-5EF0C32DF4EA' \
-                        --use-default-connection \
-                        --use-default-variables \
                         --server-name 'IAMS03' \
                         --table-name 'Person'
 ```
 
-Use the following SQL to identify an appropriate job server for custom connectors:
+## Identifying a job server for synchronization
+
+Use the following SQL to identify the name of an appropriate job server for custom connectors:
 
 ```sql
 select Ident_Server from QBMServer s

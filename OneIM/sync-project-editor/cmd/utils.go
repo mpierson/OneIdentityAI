@@ -271,13 +271,20 @@ func ExecInsertCommand[T any](c *cobra.Command, db *sqlx.DB,
 	return nil
 }
 
+func NewDPRKeys[T any](db *sqlx.DB) (string, string, error) {
+	var t T
+	id, err := dbx.GetNewId(db)
+	objectKey := oneim.MakeObjectKey(reflect.TypeOf(t).Name(), id)
+
+	return id, objectKey, err
+}
+
 func InsertNewDPRObject[T any](db *sqlx.DB, name string, clrTypeName string,
 	fNew func(db *sqlx.DB, id string, objectKey string, name string, clrId string) (*T, error),
 ) (*T, string, error) {
 
 	var t T
-	id, err := dbx.GetNewId(db)
-	objectKey := oneim.MakeObjectKey(reflect.TypeOf(t).Name(), id)
+	id, objectKey, err := NewDPRKeys[T](db)
 
 	clrId := ""
 	if len(clrTypeName) != 0 {

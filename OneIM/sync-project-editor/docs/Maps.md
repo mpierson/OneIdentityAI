@@ -46,8 +46,7 @@ Parameters
 sped -C my_db.yaml mapping-rule --map-id 'B72BC648-937B-495F-9240-F1E04FDAD276' \
         insert --name "FirstName_firstName" \
                --left-property "FirstName" --right-property "firstName" \
-               --direction "Inherite" \
-               --clr-name 'VI.Projector.Mapping.Rules.SinglePropertyComparisonRule'
+               --direction "Inherite"
 ```
 
 Parameters
@@ -57,9 +56,7 @@ Parameters
 - left-property: name of the attribute in the left schema
 - right-property: name of the attribute in the right schema
 - direction: mapping direction valid for this rule, one of Inherite, ToTheLeft, ToTheRight, DoNotMap (default is Inherite)
-- clr-name: .Net CLR identifier of the mapping rule (default is _VI.Projector.Mapping.Rules.SinglePropertyComparisonRule_)
 
-Use the values in [Common Language Runtime Type Identifiers](CLRIdentifiers.md)  to determine the appropriate .Net CLR identifier of the mapping rule, or use the SPEd command _clr_ to lookup the identifier.  The CLR type must expose the _VI.Projector.Mapping.ISystemMappingRule_ interface.  Simple mapping rules, e.g. map of single value attributes, should use _VI.Projector.Mapping.Rules.SinglePropertyComparisonRule_.
 
 Mapping direction notes:
 
@@ -85,8 +82,11 @@ When a value lookup is needed to map a target system property to an Identity Man
 ```bash
 sped -C my_db.yaml mapping-rule --map-id 'B72BC648-937B-495F-9240-F1E04FDAD276' \
         add-key-based-rule --name "UID_PersonHead to manager" \
-               --left-property "UID_PersonHead" --right-property "manager" \
-               --lookup-table Person --right-key-attribute PersonnelNumber --left-key-attribute UID_Person
+               --left-property "UID_PersonHead" \
+               --right-property "manager" \
+               --lookup-table Person \
+               --right-key-attribute PersonnelNumber \
+               --left-key-attribute UID_Person
 ```
 
 Parameters
@@ -112,7 +112,6 @@ Similar to schema mapping rules, object matching rules define the attribute(s) o
 sped -C my_db.yaml mapping-rule --map-id 'B72BC648-937B-495F-9240-F1E04FDAD276' \
         insert-matching-rule --name "EmployeeIdKey" \
                --left-property "PersonnelNumber" --right-property "EmployeeId" \
-               --clr-name 'VI.Projector.Mapping.Rules.SinglePropertyComparisonRule'
 ```
 
 Parameters
@@ -121,7 +120,6 @@ Parameters
 - name: name of the matching rule
 - left-property: name of the attribute in the left schema
 - right-property: name of the attribute in the right schema
-- clr-name: .Net CLR identifier of the mapping rule (default: _VI.Projector.Mapping.Rules.SinglePropertyComparisonRule_)
 
 
 

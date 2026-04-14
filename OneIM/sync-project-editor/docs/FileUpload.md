@@ -4,12 +4,12 @@ SPEd facilitates the upload of custom connector DLL files to the appropriate Ide
 
 
 ```bash
-sped -C my_db.yaml file insert --file-name ~/projects/connector/bin/debug/my-connector.dll --file-version '0.1'
+sped -C my_db.yaml file insert --file ~/projects/connector/bin/debug/my-connector.dll --file-version '0.1'
 ```
 
 Parameters
 
-- file-name: full path of file to be inserted into Identity Manager database
+- file: full path of file to be inserted into Identity Manager database
 - file-version: version string associated with file; should correspond to the version present in the connector DLL file metadata
 
 **Note**:  Identity Manager's internal processing of the new file may take 5 to 10 minutes to complete. 

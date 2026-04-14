@@ -20,29 +20,51 @@ Identity Manager connection strings for synchronization typically take the form:
 
 `Authentication=ProjectorAuthenticator;data source=<host name>;DBFactory="VI.DB.ViSqlFactory, VI.DB";initial catalog=<database name>;integrated security=False;user id=<username>;password[S]=<password>;pooling=False`
 
+Attributes in a typical Identity Manager connection string:
+
+- _Authentication_: type of authentication used in synchronization; custom connectors should use `ProjectorAuthenticator`
+- _data source_: host name of SQL Server server hosting the Identity Manager database
+- _DBFactory_: .Net SQL connection factory; custom connectors should use `VI.DB.ViSqlFactory, VI.DB`
+- _initial catalog_: name of Identity Manager database
+- _integrated security_: true if authentication is performed via Kerberos using service account; typically `False`
+- _user id_: service account name
+- _password_: service account password
+- _pooling_: true if the SQL Server driver should pool connections; should be `False`
+
+
 ## Target system connection
 
 To create a connection object for the target system:
 
 ```bash
 sped -C my_db.yaml connection --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
-        insert-target-system-connection --connector-type 'VI.Projector.Powershell.PoshConnectorDescriptor' \
-                                        --connection-string $SYSTEM_CONSTRING
+        insert-target-system-connection --connection-string $SYSTEM_CONSTRING
 ```
 
 Parameters
 
 - shell: UID\_DPRSHell of the synchronization project
-- connector-type: CLR id of the target system connector
 - connection-string: system-specific connection string for the target system
 
 The connection string will be passed to the target system connector at runtime, and typically contains host connection details.  For custom connectors, the connection string also contains a compressed version of the XML connector definition.
 
-Sample connection string format for a Powershell connector:
+Connection string format for a Powershell connector:
 
-`ClassName=MyCustomConnector;CommaSeparatedDLLNames=MyConnector.dll;ConnectionPoolSize=1;DefinitionXml=<compressed xml>;FolderContainingDLLs[V]=CP_Posh_FolderContainingDLLs;Hostname[V]=CP_Posh_Hostname;Username[V]=CP_Posh_Username;Password[V]=CP_Posh_Password;Namespace=com.acme.myconnector;SystemId=MyConnector`
+`SystemId=MyConnector;Namespace=com.acme.myconnector;ClassName=MyCustomConnector;CommaSeparatedDLLNames=MyConnector.dll;ConnectionPoolSize=1;DefinitionXml=<compressed xml>;FolderContainingDLLs[V]=CP_Posh_FolderContainingDLLs;[Other parameters required by connector, e.g. host, port, user name, password ...]`
 
 The `[V]` designation implies that the connection parameter will be defined as a system variable.
+
+Attributes in a typical custom connector connection string:
+
+- _SystemId_: unique identifier of the target system, e.g. FQDN of service
+- _ClassName_: name of the class that implements `ois.oneim.ConnectorBase.ConnectorBase.ConnectorInterface`
+- _CommaSeparatedDLLNames_: file names of connector DLL plus any dependencies
+- _ConnectionPoolSize_: maximum size of connection pool, if implemented by custom connector; typically `1`
+- _DefinitionXml_: connector definition XML, Base64 encoded and compressed, described below
+- _FolderContainingDLLs_: local path of folder on job server that will be used to store connector DLLs; for most Identity Manager job servers folder will be `c:\Program Files\One Identity\Identity Manager`
+
+Additional connection parameters required by connector should be included in the connection string, e.g. host name of server, service account credentials.
+
 
 Compressing the connector definition XML is a three step process:
 

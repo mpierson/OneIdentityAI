@@ -84,7 +84,24 @@ var InsertWorkflowCmd = CreateInsertCommand(
 )
 
 func insertWorkflow(c *cobra.Command, db *sqlx.DB) error {
-	return ExecInsertCommand[DPRProjectionConfig](c, db, "VI.Projector.Projection.ProjectionConfiguration", newWorkflow)
+
+	var newWFId string
+	fNew := func(c *cobra.Command, db *sqlx.DB, id string, objectKey string, name string, clrId string) (*DPRProjectionConfig, error) {
+		newWFId = id
+		return newWorkflow(c, db, id, objectKey, name, clrId)
+	}
+
+	err := ExecInsertCommand[DPRProjectionConfig](c, db, "VI.Projector.Projection.ProjectionConfiguration", fNew)
+	if err != nil {
+		return err
+	}
+
+	shellId, err := GetStructId_MustExist[DPRShell](c, "shell", db)
+	if err != nil {
+		return err
+	}
+	return addAllConnectionsToWorkflow(db, shellId, newWFId)
+
 }
 
 func newWorkflow(
@@ -177,10 +194,10 @@ var AddAllConnectionsToWorkflowCmd = createDPRCommand(
 	"add all system connections associated with the project to a workflow",
 	`Add all system connection in the given project to a synchronization workflow (DPRProjectionConfigHasConnect).`,
 	[]string{"id"},
-	addAllConnectionsToWorkflow,
+	addAllConnectionsToWorkflowCmd,
 )
 
-func addAllConnectionsToWorkflow(c *cobra.Command, db *sqlx.DB) error {
+func addAllConnectionsToWorkflowCmd(c *cobra.Command, db *sqlx.DB) error {
 
 	id, err := GetStructId_MustExist[DPRProjectionConfig](c, "id", db)
 	if err != nil {
@@ -192,13 +209,17 @@ func addAllConnectionsToWorkflow(c *cobra.Command, db *sqlx.DB) error {
 		return err
 	}
 
+	return addAllConnectionsToWorkflow(db, shellId, id)
+}
+
+func addAllConnectionsToWorkflow(db *sqlx.DB, shellId string, workflowId string) error {
 	connections, err := GetAllConnections(db, shellId)
 	if err != nil {
 		return err
 	}
 
 	for _, v := range connections {
-		err = addOneConnectionToWorkflow(db, id, v.UID_DPRSystemConnection)
+		err = addOneConnectionToWorkflow(db, workflowId, v.UID_DPRSystemConnection)
 		if err != nil {
 			return err
 		}

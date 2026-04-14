@@ -78,22 +78,37 @@ func fillSchemaTypeData(db *sqlx.DB, t *DPRSchemaType) error {
 var InsertSchemaTypeCmd = CreateInsertCommand(
 	"create a new synchronization schema type",
 	`Create a new synchronization schema type (DPRSchemaType) and return the UID_DPRSchemaType of the new type.`,
-	[]string{"schema-id", "name", "clr-name"},
+	[]string{"schema-id", "name"},
 	insertSchemaType,
 )
 
 func insertSchemaType(c *cobra.Command, db *sqlx.DB) error {
-	clrId, _ := c.Flags().GetString("clr-name")
-	return ExecInsertCommand[DPRSchemaType](c, db, clrId, newSchemaType)
+	clr, _ := c.Flags().GetString("clr-name")
+
+	if len(clr) == 0 {
+		schemaId, _ := c.Flags().GetString("schema-id")
+		clr, _ = GetCLRForTarget(db, schemaId,
+			"VI.Projector.Database.DatabaseSchemaType", "VI.Projector.Powershell.PoshSchemaType")
+	}
+
+	return ExecInsertCommand[DPRSchemaType](c, db, clr, newSchemaTypeCmd)
 }
 
-func newSchemaType(
+func newSchemaTypeCmd(
 	c *cobra.Command, db *sqlx.DB,
 	id string, objectKey string, name string,
 	clrId string,
 ) (*DPRSchemaType, error) {
-
 	schemaId, _ := c.Flags().GetString("schema-id")
+	return newSchemaType(db, id, objectKey, name, clrId, schemaId)
+}
+
+func newSchemaType(
+	db *sqlx.DB,
+	id string, objectKey string, name string,
+	clrId string,
+	schemaId string,
+) (*DPRSchemaType, error) {
 
 	t := DPRSchemaType{
 		UID_DPRSchemaType: id,
@@ -107,6 +122,17 @@ func newSchemaType(
 	}
 
 	return &t, nil
+}
+
+func AddTypeToSchema(db *sqlx.DB, schemaId string, typeName string, clr string) (string, error) {
+
+	newFn := func(db1 *sqlx.DB, id string, objectKey string, name string, clrId string) (*DPRSchemaType, error) {
+		return newSchemaType(db1, id, objectKey, name, clrId, schemaId)
+	}
+
+	_, id, err := InsertNewDPRObject(db, typeName, clr, newFn)
+
+	return id, err
 }
 
 var UpdateSchemaTypeCmd = CreateUpdateCommand(
@@ -123,7 +149,7 @@ var AddSchemaMethodsCmd = createDPRCommand(
 	"add-methods",
 	"add one or more methods to a schema type",
 	`Add methods to schema type (DPRSchemaMethod).`,
-	[]string{"id", "clr-name"},
+	[]string{"id"},
 	addMethodsToSchemaType,
 )
 
@@ -134,14 +160,17 @@ func addMethodsToSchemaType(c *cobra.Command, db *sqlx.DB) error {
 		return err
 	}
 
-	clrName, err := c.Flags().GetString("clr-name")
-	if err != nil {
-		return err
-	} else if len(clrName) == 0 {
+	clr, _ := c.Flags().GetString("clr-name")
+	if len(clr) == 0 {
+		schemaId, _ := c.Flags().GetString("schema-id")
+		clr, _ = GetCLRForTarget(db, schemaId,
+			"VI.Projector.Database.DatabaseSchemaMethod", "VI.Projector.Powershell.Schema.PoshSchemaMethod")
+	}
+	if len(clr) == 0 {
 		return errors.New("CLR name required")
 	}
 
-	clrId, err := GetClrId(db, clrName)
+	clrId, err := GetClrId(db, clr)
 	if err != nil {
 		return err
 	}
@@ -169,11 +198,7 @@ func addMethodsToSchemaType(c *cobra.Command, db *sqlx.DB) error {
 }
 func addMethodToSchemaType(db *sqlx.DB, typeId string, method string, clrId string) error {
 
-	id, err := dbx.GetNewId(db)
-	if err != nil {
-		return err
-	}
-	objectKey := oneim.MakeObjectKey("DPRSchemaMethod", id)
+	id, objectKey, err := NewDPRKeys[DPRSchemaMethod](db)
 
 	t, err := newSchemaMethod(db, id, objectKey, method, typeId, clrId)
 	err = InsertDPRObject[DPRSchemaMethod](db, t)
@@ -189,23 +214,27 @@ var AddOneIMSchemaPropertiesCmd = createDPRCommand(
 	"add all columns of the corresponding OneIM table to a schema type",
 	`Add OneIM columns to schema type (DPRSchemaProperty).`,
 	[]string{"id"},
-	addPropertiesToSchemaType,
+	addPropertiesToSchemaTypeCmd,
 )
 
-func addPropertiesToSchemaType(c *cobra.Command, db *sqlx.DB) error {
+func addPropertiesToSchemaTypeCmd(c *cobra.Command, db *sqlx.DB) error {
 
 	id, err := c.Flags().GetString("id")
 	if err != nil {
 		return err
 	}
+	return AddPropertiesToSchemaType(db, id)
+}
 
-	schemaType, err := dbx.GetStructSingleton[DPRSchemaType](db, id)
+func AddPropertiesToSchemaType(db *sqlx.DB, schemaTypeId string) error {
+
+	schemaType, err := dbx.GetStructSingleton[DPRSchemaType](db, schemaTypeId)
 	if err != nil {
 		return err
 	}
 
 	// current props, to avoid dupes
-	currentProps, err := GetAllSchemaProperties(db, id)
+	currentProps, err := GetAllSchemaProperties(db, schemaTypeId)
 	if err != nil {
 		return err
 	}
@@ -216,10 +245,10 @@ func addPropertiesToSchemaType(c *cobra.Command, db *sqlx.DB) error {
 	}
 
 	cols, err := GetTableColumns(db, *schemaType.Name)
-	for _, c := range cols {
+	for _, col := range cols {
 
-		if !slices.Contains(currentPropNames, c[0]) {
-			err = addPropertyToSchemaType(db, id, c[0], c[1])
+		if !slices.Contains(currentPropNames, col[0]) {
+			err = addPropertyToSchemaType(db, schemaTypeId, col[0], col[1])
 			if err != nil {
 				return err
 			}
@@ -230,13 +259,10 @@ func addPropertiesToSchemaType(c *cobra.Command, db *sqlx.DB) error {
 }
 func addPropertyToSchemaType(db *sqlx.DB, typeId string, cName string, cType string) error {
 
-	id, err := dbx.GetNewId(db)
+	id, objectKey, err := NewDPRKeys[DPRSchemaProperty](db)
 	if err != nil {
 		return err
 	}
-	objectKey := oneim.MakeObjectKey("DPRSchemaProperty", id)
-
-	// OneIM DB IDs
 	clrId, err := GetClrId(db, "VI.Projector.Database.DatabaseSchemaProperty")
 	if err != nil {
 		return err
@@ -256,26 +282,35 @@ var AddDefaultSchemaClassCmd = createDPRCommand(
 	"add the default 'all' class to a schema type",
 	`Add the default unfiltered 'all' class (DPRSchemaClass) to a schema type and return the UID_DPRSchemaClass of the new class.`,
 	[]string{"id"},
-	addDefaultClassToSchemaType,
+	addDefaultClassToSchemaTypeCmd,
 )
 
-func addDefaultClassToSchemaType(c *cobra.Command, db *sqlx.DB) error {
+func addDefaultClassToSchemaTypeCmd(c *cobra.Command, db *sqlx.DB) error {
 
 	schemaTypeId, err := c.Flags().GetString("id")
 	if err != nil {
 		return err
 	}
+	t, err := AddDefaultClassToSchemaType(db, schemaTypeId)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(t.UID_DPRSchemaClass)
+	return nil
+}
+
+func AddDefaultClassToSchemaType(db *sqlx.DB, schemaTypeId string) (*DPRSchemaClass, error) {
 
 	schemaType, err := dbx.GetStructSingleton[DPRSchemaType](db, schemaTypeId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	id, err := dbx.GetNewId(db)
+	id, objectKey, err := NewDPRKeys[DPRSchemaClass](db)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	objectKey := oneim.MakeObjectKey("DPRSchemaClass", id)
 
 	name := fmt.Sprintf(`%s_Master`, *schemaType.Name)
 	displayName := fmt.Sprintf(`%s (all)`, *schemaType.Name)
@@ -283,7 +318,7 @@ func addDefaultClassToSchemaType(c *cobra.Command, db *sqlx.DB) error {
 	// imply clr of class from schema type CLR
 	schemaTypeClrName, err := GetClrName(db, schemaType.UID_QBMClrType)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	clrName := ""
 	if schemaTypeClrName == "VI.Projector.Database.DatabaseSchemaType" {
@@ -294,16 +329,14 @@ func addDefaultClassToSchemaType(c *cobra.Command, db *sqlx.DB) error {
 
 	clrId, err := GetClrId(db, clrName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	t, err := newSchemaClass(db, schemaTypeId, id, objectKey, name, displayName, clrId)
 	err = InsertDPRObject[DPRSchemaClass](db, t)
 	if err != nil {
-		return err
+		return t, err
 	}
 
-	fmt.Println(id)
-
-	return nil
+	return t, nil
 }

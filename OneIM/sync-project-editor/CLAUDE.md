@@ -6,3 +6,4 @@ Notes:
 
 - In general, it is preferred to run one SPEd command at a time, and not in batches. 
 - When creating synchronization project objects, SPEd commands return the GUID associated with the created object; capturing the GUID for future use is recommended.
+- the Identity Manager database can be queried directly to read tables related to synchronization, but updates should only be performed via SPEd commands

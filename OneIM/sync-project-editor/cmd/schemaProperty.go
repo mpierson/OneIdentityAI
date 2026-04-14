@@ -68,12 +68,19 @@ func fillSchemaPropertyData(db *sqlx.DB, t *DPRSchemaProperty) error {
 var InsertSchemaPropertyCmd = CreateInsertCommand(
 	"create a new synchronization schema property",
 	`Create a new synchronization schema property (DPRSchemaProperty) and return the UID_DPRSchemaProperty of the new property.`,
-	[]string{"schema-type-id", "name", "clr-name", "data-type"},
+	[]string{"schema-type-id", "name", "data-type"},
 	insertSchemaProperty,
 )
 
 func insertSchemaProperty(c *cobra.Command, db *sqlx.DB) error {
 	clr, _ := c.Flags().GetString("clr-name")
+
+	if len(clr) == 0 {
+		schemaId, _ := c.Flags().GetString("schema-id")
+		clr, _ = GetCLRForTarget(db, schemaId,
+			"VI.Projector.Database.DatabaseSchemaProperty", "VI.Projector.Powershell.PoshSchemaProperty")
+	}
+
 	return ExecInsertCommand[DPRSchemaProperty](c, db, clr, newSchemaProperty_cmd)
 }
 
@@ -179,8 +186,7 @@ func InsertKeyBasedVirtualProperty(db *sqlx.DB,
 		return "", err
 	}
 
-	id, err := dbx.GetNewId(db)
-	objectKey := oneim.MakeObjectKey("DPRSchemaProperty", id)
+	id, objectKey, err := NewDPRKeys[DPRSchemaProperty](db)
 
 	prop, err := newSchemaProperty(db, schemaTypeId, id, objectKey, propName, "String", clrId)
 	if err != nil {

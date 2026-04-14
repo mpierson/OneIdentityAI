@@ -121,20 +121,14 @@ func NewMatchSets(
 // return new match set collection with all four match sets
 func CreateNewMatchSetsWithDefaults(db *sqlx.DB, stepId string) (*DPRSystemObjectMatchSets, error) {
 
-	var t1 DPRSystemObjectMatchSets
-
-	matchSetsId, err := dbx.GetNewId(db)
-	if err != nil {
-		return &t1, err
-	}
-	objectKey := oneim.MakeObjectKey("DPRSystemObjectMatchSets", matchSetsId)
+	matchSetsId, objectKey, err := NewDPRKeys[DPRSystemObjectMatchSets](db)
 	clrId, _ := GetClrId(db, "VI.Projector.Projection.SystemObjectMatchingSets")
 	// new match set collection will re-use step id (this appears to be the only way to tie the set back to wf)
 	name := fmt.Sprintf(`Step%s`, stepId)
 
 	t, err := NewMatchSets(db, matchSetsId, objectKey, name, clrId)
 	if err != nil {
-		return &t1, err
+		return t, err
 	}
 
 	err = InsertDPRObject[DPRSystemObjectMatchSets](db, t)
@@ -200,12 +194,7 @@ func addDefaultMatchSets(db *sqlx.DB, t *DPRSystemObjectMatchSets, setsId string
 
 func addMatchSetToCollection(db *sqlx.DB, collectionId string, matchSetName string) (string, error) {
 
-	id, err := dbx.GetNewId(db)
-	if err != nil {
-		return "", err
-	}
-	objectKey := oneim.MakeObjectKey("DPRSystemObjectMatchSet", id)
-
+	id, objectKey, err := NewDPRKeys[DPRSystemObjectMatchSets](db)
 	clrId, _ := GetClrId(db, "VI.Projector.Projection.SystemObjectMatchingSet")
 
 	t, err := newSingleMatchSet(db, id, objectKey, matchSetName, clrId)

@@ -69,13 +69,19 @@ func fillSchemaMethodData(db *sqlx.DB, t *DPRSchemaMethod) error {
 var InsertSchemaMethodCmd = CreateInsertCommand(
 	"create a new synchronization schema method",
 	`Create a new synchronization schema method (DPRSchemaMethod) and return the UID_DPRSchemaMethod of the new method.`,
-	[]string{"schema-type-id", "name", "clr-name"},
+	[]string{"schema-type-id", "name"},
 	insertSchemaMethod,
 )
 
 func insertSchemaMethod(c *cobra.Command, db *sqlx.DB) error {
-	clrId, _ := c.Flags().GetString("clr-name")
-	return ExecInsertCommand[DPRSchemaMethod](c, db, clrId, newSchemaMethodCmd)
+	clr, _ := c.Flags().GetString("clr-name")
+
+	if len(clr) == 0 {
+		schemaId, _ := c.Flags().GetString("schema-id")
+		clr, _ = GetCLRForTarget(db, schemaId,
+			"VI.Projector.Database.DatabaseSchemaMethod", "VI.Projector.Powershell.Schema.PoshSchemaMethod")
+	}
+	return ExecInsertCommand[DPRSchemaMethod](c, db, clr, newSchemaMethodCmd)
 }
 
 func newSchemaMethodCmd(
