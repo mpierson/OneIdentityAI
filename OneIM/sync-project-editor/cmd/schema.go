@@ -77,10 +77,10 @@ var InsertSchemaCmd = CreateInsertCommand(
 
 func insertSchema(c *cobra.Command, db *sqlx.DB) error {
 	clrId, _ := c.Flags().GetString("clr-name")
-	return ExecInsertCommand[DPRSchema](c, db, clrId, newSchema)
+	return ExecInsertCommand[DPRSchema](c, db, clrId, newSchemaCmd)
 }
 
-func newSchema(
+func newSchemaCmd(
 	c *cobra.Command, db *sqlx.DB,
 	id string, objectKey string, name string,
 	clrId string,
@@ -93,31 +93,7 @@ func newSchema(
 
 	sysId, _ := c.Flags().GetString("system-id")
 
-	return newSchemaInternal(db, id, objectKey, name, shellId, sysId, clrId)
-}
-
-func newSchemaInternal(
-	db *sqlx.DB,
-	id string, objectKey string, name string,
-	shellId string, sysId string,
-	clrId string,
-) (*DPRSchema, error) {
-
-	t := DPRSchema{
-		UID_DPRSchema:  id,
-		UID_DPRShell:   shellId,
-		UID_QBMClrType: clrId,
-		Specials: oneim.Specials{
-			XObjectKey: objectKey,
-		},
-		Displayable: Displayable{
-			Name:        &name,
-			DisplayName: &name,
-		},
-		SystemId: sysId,
-	}
-
-	return &t, nil
+	return newSchema(id, objectKey, name, clrId, shellId, sysId, "", "", "", "", 0)
 }
 
 var InsertOneIMSchemaCmd = CreateBaseCommand(
@@ -176,29 +152,40 @@ func newOneIMSchema(
 	}
 
 	sysId := fmt.Sprintf(`FTP#%s`, oneIMDB.UID_Database)
-	t, err := newSchemaInternal(db, id, objectKey, name, shellId, sysId, clrId)
-	if err != nil {
-		return nil, err
+	sysVersion := fmt.Sprintf(`%s.0.0`, *oneIMDB.EditionVersion)
+	return newSchema(id, objectKey, name, clrId,
+		shellId, sysId, "OneIM", sysVersion, "One Identity Manager", "SupportsRevisions", 2)
+}
+
+func newSchema(
+	id string, objectKey string, name string, clrId string,
+	shellId string, systemId string,
+	systemType string, systemVersion string, systemDisplay string,
+	systemCapabilities string, functionalLevel int) (*DPRSchema, error) {
+
+	t := DPRSchema{
+		UID_DPRSchema:  id,
+		UID_DPRShell:   shellId,
+		UID_QBMClrType: clrId,
+		Specials: oneim.Specials{
+			XObjectKey: objectKey,
+		},
+		Displayable: Displayable{
+			Name:        &name,
+			DisplayName: &name,
+		},
+		SystemId:           systemId,
+		SystemType:         &systemType,
+		SystemVersion:      &systemVersion,
+		SystemDisplay:      &systemDisplay,
+		SystemCapabilities: &systemCapabilities,
+		FunctionalLevel:    functionalLevel,
 	}
-
-	systemType := "OneIM"
-	t.SystemType = &systemType
-
-	systemVersion := fmt.Sprintf(`%s.0.0`, *oneIMDB.EditionVersion)
-	t.SystemVersion = &systemVersion
-
-	systemDisplay := "One Identity Manager"
-	t.SystemDisplay = &systemDisplay
 
 	nameFormat := "Identifier"
 	t.NameFormat = &nameFormat
 
-	systemCapabilities := "SupportsRevisions"
-	t.SystemCapabilities = &systemCapabilities
-
-	t.FunctionalLevel = 2
-
-	return t, nil
+	return &t, nil
 }
 
 var InsertCustomSchemaCmd = CreateBaseCommand(
@@ -231,7 +218,8 @@ func newCustomSchema(
 		return nil, errors.New("Invalid system identifier: " + sysId)
 	}
 
-	t, err := newSchemaInternal(db, id, objectKey, name, shellId, sysId, clrId)
+	t, err := newSchema(id, objectKey, name, clrId,
+		shellId, sysId, "Posh", "345", "PoshNet40", "NativeFilterNotSupported", 0)
 	if err != nil {
 		return nil, err
 	}
@@ -291,8 +279,8 @@ func GetCLRForTarget(db *sqlx.DB, schemaId string, oneIMCLR string, targetCLR st
 		return "", err
 	}
 
-	if "OneIM" == *(schema.SystemType) {
-		return "VI.Projector.Database.DatabaseSchemaProperty", nil
+	if schema.SystemType != nil && "OneIM" == *(schema.SystemType) {
+		return oneIMCLR, nil
 	}
-	return "VI.Projector.Powershell.PoshSchemaProperty", nil
+	return targetCLR, nil
 }

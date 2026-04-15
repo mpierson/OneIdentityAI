@@ -76,8 +76,16 @@ func insertSchemaProperty(c *cobra.Command, db *sqlx.DB) error {
 	clr, _ := c.Flags().GetString("clr-name")
 
 	if len(clr) == 0 {
-		schemaId, _ := c.Flags().GetString("schema-id")
-		clr, _ = GetCLRForTarget(db, schemaId,
+		schemaTypeId, err := GetStructId_MustExist[DPRSchemaType](c, "schema-type-id", db)
+		if err != nil {
+			return err
+		}
+		schemaType, err := dbx.GetStructSingleton[DPRSchemaType](db, schemaTypeId)
+		if err != nil {
+			return err
+		}
+
+		clr, _ = GetCLRForTarget(db, schemaType.UID_DPRSchema,
 			"VI.Projector.Database.DatabaseSchemaProperty", "VI.Projector.Powershell.PoshSchemaProperty")
 	}
 

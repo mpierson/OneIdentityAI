@@ -1,4 +1,4 @@
-# Synchronizatin Project (DPRShell)
+# Synchronization Project (DPRShell)
 
 Top level container for sync project objects.
 
