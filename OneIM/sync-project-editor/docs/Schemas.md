@@ -168,7 +168,7 @@ sped -C my_db.yaml schema-type --schema-id '9E51EFE9-761C-4D53-8733-9476051262BC
 
 Schema classes are used to define subsets of schema data.  In most cases, SPEd should be used only to create the default 'all' class for a schema type, i.e. class with no filter.  Each schema type requires at least one class.
 
-Use the _schema-type add-default-class_ command to add the default 'all' class to a schema type:
+Use the _schema-type add-default-class_ command to add the default class to a schema type:
 
 ```bash
 sped -C my_db.yaml schema-type add-default-class --id 'EB452DE0-E324-4D0B-BB45-1E636016D426'
@@ -178,4 +178,18 @@ Parameters:
 
 - id: UID\_DPRSchemaType of the parent schema type
 
+The _add-default-class_ sub-command returns the UID\_DPRSchemaClass of the new class.
+
+
+Use the _schema-class show_ command to view details of the class created by _schema-type add-default-class_:
+
+```bash
+sped -C my_db.yaml schema-class --schema-type-id 'EB452DE0-E324-4D0B-BB45-1E636016D426' \
+        show --id 'CCC-7DBEA18F6D654028A2CC31A0400065AD'
+```
+
+Parameters:
+
+- schema-type-id: UID\_DPRSchemaType of the parent schema type
+- id: UID_\DPRSchemaClass of the new class
 

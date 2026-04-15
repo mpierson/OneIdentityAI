@@ -100,6 +100,8 @@ func insertFile(c *cobra.Command, db *sqlx.DB) error {
 		return err
 	}
 
+	fmt.Println("uploading file")
+
 	dat, err := os.ReadFile(*t.FilePath)
 	if err != nil {
 		return err
@@ -108,6 +110,8 @@ func insertFile(c *cobra.Command, db *sqlx.DB) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("file uploaded, now pushing data to job servers")
 
 	// ----- add Server assignment ---------
 
@@ -124,10 +128,13 @@ func insertFile(c *cobra.Command, db *sqlx.DB) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("job server update started")
 	err = WaitForTaskFinish(db, ctx, "TaskName='CheckAndUpdate'", 10*time.Second)
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("job server update complete, now verifiying")
 
 	// ---- trigger module info refresh -----
 
@@ -155,12 +162,14 @@ func insertFile(c *cobra.Command, db *sqlx.DB) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("still verifiying")
 	err = WaitForTaskFinish(db, ctx, "TaskName='CheckAndUpdate'", 10*time.Second)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(newId)
+	fmt.Println("done")
+	fmt.Println("file identifier: " + newId)
 
 	return nil
 }
@@ -172,6 +181,15 @@ func newFileRevision(
 ) (*QBMFileRevision, error) {
 
 	filePath, _ := c.Flags().GetString("file")
+
+	// check for existing
+	ts, err := GetFileRevisions(db, filepath.Base(filePath))
+	if err != nil {
+		return nil, err
+	}
+	if len(ts) > 0 {
+		return nil, errors.New("file already exists in Identity Manager")
+	}
 
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
@@ -190,6 +208,15 @@ func newFileRevision(
 	}
 
 	return &t, nil
+}
+
+func GetFileRevisions(db *sqlx.DB, fileName string) ([]QBMFileRevision, error) {
+	if !IsValidIdOrName(fileName) {
+		return nil, errors.New("Invalid file name " + fileName)
+	}
+
+	wc := fmt.Sprintf(`FileName='%s'`, fileName)
+	return dbx.GetStructData[QBMFileRevision](db, "QBMFileRevision", wc)
 }
 
 func UpdateFileContent(db *sqlx.DB, t *QBMFileRevision, content []byte) error {
