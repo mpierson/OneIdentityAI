@@ -21,8 +21,8 @@ type DPRJournalMessage struct {
 	UID_DPRJournalMessage string
 	UID_DPRJournal        string
 	MessageString         string
-	MessageContext        string
 	MessageType           string
+	MessageContext        *string
 	SequenceNumber        int
 }
 

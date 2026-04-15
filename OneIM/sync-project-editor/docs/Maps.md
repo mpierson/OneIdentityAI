@@ -101,6 +101,7 @@ Parameters
 
 The sample code above will create a mapping from _manager_ in the target system to _UID\_PersonHead_ in Identity Manager, with a lookup of _Person.UID\_Person_ using the manager's _PersonnelNumber_.
 
+**Note**: all tables referenced in key-based mapping rules must be added to the Identity Manager schema using the SPEd command _schema-type insert_.  Attributes referenced in the mapping should be added as schema properties using the SPEd command _schema-property insert_ or _schema-type add-oneim-properties_ commands.
 
 
 ## Adding matching rules

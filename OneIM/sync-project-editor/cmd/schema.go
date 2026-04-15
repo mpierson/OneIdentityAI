@@ -291,7 +291,7 @@ func GetCLRForTarget(db *sqlx.DB, schemaId string, oneIMCLR string, targetCLR st
 		return "", err
 	}
 
-	if *schema.SystemType == "OneIM" {
+	if "OneIM" == *(schema.SystemType) {
 		return "VI.Projector.Database.DatabaseSchemaProperty", nil
 	}
 	return "VI.Projector.Powershell.PoshSchemaProperty", nil

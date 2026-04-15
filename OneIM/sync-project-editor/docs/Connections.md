@@ -58,6 +58,7 @@ Attributes in a typical custom connector connection string:
 
 - _SystemId_: unique identifier of the target system, e.g. FQDN of service
 - _ClassName_: name of the class that implements `ois.oneim.ConnectorBase.ConnectorBase.ConnectorInterface`
+- _Namespace_: .Net class namespace of class identified in _ClassName_
 - _CommaSeparatedDLLNames_: file names of connector DLL plus any dependencies
 - _ConnectionPoolSize_: maximum size of connection pool, if implemented by custom connector; typically `1`
 - _DefinitionXml_: connector definition XML, Base64 encoded and compressed, described below
