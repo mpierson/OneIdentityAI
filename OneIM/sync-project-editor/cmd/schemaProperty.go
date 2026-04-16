@@ -18,9 +18,13 @@ type DPRSchemaProperty struct {
 	UID_DPRSchemaProperty     string
 	UID_DPRSchemaType         string
 	UID_QBMClrType            string
+	IsVirtual                 bool
+	IsLocked                  bool
 	IsAdditional              int
 	IsReference               int
-	IsVirtual                 bool
+	IsMultiValue              int
+	IsSecretValue             int
+	IsUniqueKey               int
 	UID_BaseDPRSchemaProperty *string
 	SerializationBag          *string
 	DataType                  *string
@@ -108,11 +112,25 @@ func newSchemaProperty_cmd(
 		return nil, errors.New("Missing data type")
 	}
 
-	return newSchemaProperty(db, schemaTypeId, id, objectKey, name, dataType, clrId)
+	t, err := newSchemaProperty(schemaTypeId, id, objectKey, name, dataType, clrId)
+	if err != nil {
+		return t, err
+	}
+
+	isKey, _ := c.Flags().GetBool("is-key")
+	if isKey {
+		t.IsUniqueKey = 1
+	}
+
+	isSecret, _ := c.Flags().GetBool("is-secret")
+	if isSecret {
+		t.IsSecretValue = 1
+	}
+
+	return t, nil
 }
 
 func newSchemaProperty(
-	db *sqlx.DB,
 	schemaTypeId string,
 	id string, objectKey string, name string,
 	dataType string,
@@ -123,12 +141,18 @@ func newSchemaProperty(
 		UID_DPRSchemaProperty: id,
 		UID_QBMClrType:        clrId,
 		UID_DPRSchemaType:     schemaTypeId,
-		Specials:              oneim.Specials{XObjectKey: objectKey},
+		Specials:              oneim.NewSpecials(objectKey, "sped"),
 		Displayable: Displayable{
 			Name:        &name,
 			DisplayName: &name,
+			NameFormat:  &NAME_FORMAT_Identifier,
 		},
-		DataType: &dataType,
+		DataType:      &dataType,
+		IsLocked:      true,
+		IsMultiValue:  -1,
+		IsReference:   -1,
+		IsSecretValue: -1,
+		IsUniqueKey:   -1,
 	}
 
 	return &t, nil
@@ -196,7 +220,7 @@ func InsertKeyBasedVirtualProperty(db *sqlx.DB,
 
 	id, objectKey, err := NewDPRKeys[DPRSchemaProperty](db)
 
-	prop, err := newSchemaProperty(db, schemaTypeId, id, objectKey, propName, "String", clrId)
+	prop, err := newSchemaProperty(schemaTypeId, id, objectKey, propName, "String", clrId)
 	if err != nil {
 		return "", err
 	}

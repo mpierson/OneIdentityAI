@@ -11,6 +11,6 @@ var VersionCmd = &cobra.Command{
 	Short: "Print the version number of sped",
 	Long:  `Print the version number of sped.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Synchronization Project EDitor v0.1")
+		fmt.Println("Synchronization Project EDitor v0.2")
 	},
 }

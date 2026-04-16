@@ -114,11 +114,13 @@ func newSchemaType(
 		UID_DPRSchemaType: id,
 		UID_QBMClrType:    clrId,
 		UID_DPRSchema:     schemaId,
-		Specials:          oneim.Specials{XObjectKey: objectKey},
+		Specials:          oneim.NewSpecials(objectKey, "sped"),
 		Displayable: Displayable{
 			Name:        &name,
 			DisplayName: &name,
+			NameFormat:  &NAME_FORMAT_Identifier,
 		},
+		IsLocked: true,
 	}
 
 	return &t, nil
@@ -214,19 +216,19 @@ var AddOneIMSchemaPropertiesCmd = createDPRCommand(
 	"add all columns of the corresponding OneIM table to a schema type",
 	`Add OneIM columns to schema type (DPRSchemaProperty).`,
 	[]string{"id"},
-	addPropertiesToSchemaTypeCmd,
+	addDBPropertiesToSchemaTypeCmd,
 )
 
-func addPropertiesToSchemaTypeCmd(c *cobra.Command, db *sqlx.DB) error {
+func addDBPropertiesToSchemaTypeCmd(c *cobra.Command, db *sqlx.DB) error {
 
 	id, err := c.Flags().GetString("id")
 	if err != nil {
 		return err
 	}
-	return AddPropertiesToSchemaType(db, id)
+	return AddDBPropertiesToSchemaType(db, id)
 }
 
-func AddPropertiesToSchemaType(db *sqlx.DB, schemaTypeId string) error {
+func AddDBPropertiesToSchemaType(db *sqlx.DB, schemaTypeId string) error {
 
 	schemaType, err := dbx.GetStructSingleton[DPRSchemaType](db, schemaTypeId)
 	if err != nil {
@@ -248,7 +250,7 @@ func AddPropertiesToSchemaType(db *sqlx.DB, schemaTypeId string) error {
 	for _, col := range cols {
 
 		if !slices.Contains(currentPropNames, col[0]) {
-			err = addPropertyToSchemaType(db, schemaTypeId, col[0], col[1])
+			err = addDBPropertyToSchemaType(db, schemaTypeId, col[0], col[1])
 			if err != nil {
 				return err
 			}
@@ -257,7 +259,7 @@ func AddPropertiesToSchemaType(db *sqlx.DB, schemaTypeId string) error {
 
 	return nil
 }
-func addPropertyToSchemaType(db *sqlx.DB, typeId string, cName string, cType string) error {
+func addDBPropertyToSchemaType(db *sqlx.DB, typeId string, cName string, cType string) error {
 
 	id, objectKey, err := NewDPRKeys[DPRSchemaProperty](db)
 	if err != nil {
@@ -268,11 +270,13 @@ func addPropertyToSchemaType(db *sqlx.DB, typeId string, cName string, cType str
 		return err
 	}
 
-	t, err := newSchemaProperty(db, typeId, id, objectKey, cName, cType, clrId)
+	t, err := newSchemaProperty(typeId, id, objectKey, cName, cType, clrId)
 	err = InsertDPRObject[DPRSchemaProperty](db, t)
 	if err != nil {
 		return err
 	}
+
+	// TODO: update unique key, secret attrs
 
 	return nil
 }

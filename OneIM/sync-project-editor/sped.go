@@ -268,6 +268,8 @@ func init() {
 	cmd.InsertSchemaPropertyCmd.Flags().StringP("clr-name", "", "", "full name of property object type")
 	cmd.InsertSchemaPropertyCmd.Flags().StringP("data-type", "", "", "property type (string, int, etc.)")
 	cmd.InsertSchemaPropertyCmd.MarkFlagRequired("data-type")
+	cmd.InsertSchemaPropertyCmd.Flags().BoolP("is-key", "", false, "property is a unique key")
+	cmd.InsertSchemaPropertyCmd.Flags().BoolP("is-secret", "", false, "property is sensitive, e.g. a password")
 	cmd.UpdateSchemaPropertyCmd.Flags().StringP("id", "i", "", "schema property identifier")
 	cmd.UpdateSchemaPropertyCmd.MarkFlagRequired("id")
 	cmd.UpdateSchemaPropertyCmd.Flags().StringP("content", "c", "", "JSON content containing updated fields")
@@ -335,7 +337,9 @@ func init() {
 	cmd.InsertMatchingRuleCmd.MarkFlagRequired("left-property")
 	cmd.InsertMatchingRuleCmd.Flags().StringP("right-property", "r", "", "name of property on right side")
 	cmd.InsertMatchingRuleCmd.MarkFlagRequired("right-property")
+	cmd.InsertMatchingRuleCmd.Flags().BoolP("add-mapping-rule", "", true, "also add a mapping rule for same properties")
 	cmd.MappingRuleCmd.AddCommand(cmd.InsertMatchingRuleCmd)
+
 	cmd.UpdateMappingRuleCmd.Flags().StringP("id", "i", "", "mapping rule identifier")
 	cmd.UpdateMappingRuleCmd.MarkFlagRequired("id")
 	cmd.UpdateMappingRuleCmd.Flags().StringP("content", "c", "", "JSON content containing updated fields")

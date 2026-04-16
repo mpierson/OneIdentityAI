@@ -41,7 +41,9 @@ type DPRSystemMappingRule struct {
 	Map string `mapstructure:",omitzero"`
 }
 
+var MAP_RULE_DIRECTION_Inherite = "Inherite"
 var MAP_RULE_DIRECTION_Left = "ToTheLeft"
+var MAP_RULE_DIRECTION_Right = "ToTheRight"
 var MAP_RULE_DIRECTION_None = "DoNotMap"
 
 var MappingRuleCmd = CreateBaseCommand(
@@ -91,10 +93,10 @@ var InsertMappingRuleCmd = CreateInsertCommand(
 
 func insertMappingRule(c *cobra.Command, db *sqlx.DB) error {
 	clrId, _ := c.Flags().GetString("clr-name")
-	return ExecInsertCommand[DPRSystemMappingRule](c, db, clrId, newMappingRule)
+	return ExecInsertCommand[DPRSystemMappingRule](c, db, clrId, newMappingRuleCmd)
 }
 
-func newMappingRule(
+func newMappingRuleCmd(
 	c *cobra.Command, db *sqlx.DB,
 	id string, objectKey string, name string,
 	clrId string,
@@ -118,11 +120,21 @@ func newMappingRule(
 	// direction optional or n/a for some cmds
 	direction, _ := c.Flags().GetString("direction")
 
+	return newMappingRule(id, objectKey, name, clrId, mapId, leftProp, rightProp, direction)
+}
+
+func newMappingRule(
+	id string, objectKey string, name string,
+	clrId string,
+	mapId string,
+	leftProp string, rightProp string, direction string,
+) (*DPRSystemMappingRule, error) {
+
 	t := DPRSystemMappingRule{
 		UID_DPRSystemMappingRule: id,
 		UID_QBMClrType:           clrId,
 		UID_DPRSystemMap:         mapId,
-		Specials:                 oneim.Specials{XObjectKey: objectKey},
+		Specials:                 oneim.NewSpecials(objectKey, "sped"),
 		Displayable: Displayable{
 			Name:        &name,
 			DisplayName: &name,
@@ -178,6 +190,11 @@ func newKeyBasedMappingRule(
 		return t, err
 	}
 
+	rightProp, err := c.Flags().GetString("right-property")
+	if err != nil {
+		return nil, err
+	}
+
 	lookupTable, err := c.Flags().GetString("lookup-table")
 	if err != nil {
 		return t, err
@@ -198,16 +215,7 @@ func newKeyBasedMappingRule(
 	}
 
 	// create baseline map
-	t, err = newMappingRule(c, db, id, objectKey, name, clrId)
-	if err != nil {
-		return t, err
-	}
-
-	// map to the new virt prop
-	t.PropertyLeft = &vrtPropName
-	t.MappingDirection = &MAP_RULE_DIRECTION_Left
-
-	return t, nil
+	return newMappingRule(id, objectKey, name, clrId, mapId, vrtPropName, rightProp, MAP_RULE_DIRECTION_Left)
 }
 
 var InsertMatchingRuleCmd = createDPRCommand(
@@ -229,13 +237,27 @@ func newMatchingRule(
 	clrId string,
 ) (*DPRSystemMappingRule, error) {
 
-	t, err := newMappingRule(c, db, id, objectKey, name, clrId)
+	// create matching rule
+	t, err := newMappingRuleCmd(c, db, id, objectKey, name, clrId)
 	if err != nil {
 		return nil, err
 	}
 
 	t.IsKeyRule = true
 	t.MappingDirection = &MAP_RULE_DIRECTION_None
+
+	if addRule, _ := c.Flags().GetBool("add-mapping-rule"); addRule {
+		// create corresponding mapping
+
+		mrId, mrOK, err := NewDPRKeys[DPRSystemMappingRule](db)
+		mapping, err := newMappingRuleCmd(c, db, mrId, mrOK, name+"2", clrId)
+		mapping.MappingDirection = &MAP_RULE_DIRECTION_Inherite
+
+		err = InsertDPRObject[DPRSystemMappingRule](db, mapping)
+		if err != nil {
+			return t, err
+		}
+	}
 
 	return t, nil
 }

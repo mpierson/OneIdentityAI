@@ -28,13 +28,13 @@ Parameters
 
 
 ```bash
-sped -C my_db.yaml variable --variable-set B99711CF-27EE-484E-AA0C-392D5F76D78A \
+sped -C my_db.yaml variable --variable-set-id B99711CF-27EE-484E-AA0C-392D5F76D78A \
         insert -n "Host" --value "10.0.0.100"
 ```
 
 Parameters
 
-- variable-set: UID\_DPRSystemVariableSet of the parent collection
+- variable-set-id: UID\_DPRSystemVariableSet of the parent collection
 - name (n): name of the new variable
 - value: value of variable (optional)
 - secret: value is sensitive
@@ -43,7 +43,7 @@ Parameters
 Use the _secret_ option to create a variable that contains a password or other sensitive information:
 
 ```bash
-sped -C my_db.yaml variable --variable-set B99711CF-27EE-484E-AA0C-392D5F76D78A \
+sped -C my_db.yaml variable --variable-set-id B99711CF-27EE-484E-AA0C-392D5F76D78A \
         insert -n "Password" --secret --value $HOST_PASSWORD
 ```
 

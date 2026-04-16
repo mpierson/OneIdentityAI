@@ -96,9 +96,7 @@ func newShell(
 	t := DPRShell{
 		UID_DPRShell:   id,
 		UID_QBMClrType: clrId,
-		Specials: oneim.Specials{
-			XObjectKey: objectKey,
-		},
+		Specials:       oneim.NewSpecials(objectKey, "sped"),
 		Displayable: Displayable{
 			Name:        &id,
 			DisplayName: &name,

@@ -21,7 +21,10 @@ type Displayable struct {
 	DisplayName          *string `mapstructure:",omitzero"`
 	DisplayNameQualified *string `mapstructure:",omitzero"`
 	Description          *string `mapstructure:",omitzero"`
+	NameFormat           *string `mapstructure:",omitzero"`
 }
+
+var NAME_FORMAT_Identifier string = "Identifier"
 
 func IsValidIdOrName(v string) bool {
 	re := regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)

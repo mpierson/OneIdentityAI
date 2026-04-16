@@ -27,15 +27,15 @@ SPEd also supports creating a map using schema class names:
 
 ```bash
 sped -C my_db.yaml map --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
-        insert-by-name --name 'Person_Employee2' \
+        insert-by-name --name 'Person_Employee' \
                        --left "Person_Master" --right "Employee_Master"
 ```
 
 Parameters
 
 - shell: UID\_DPRSHell of the synchronization project
-- left: name of class on the left side (Identity Manager) of the map
-- right: name of class on the right side (target system) of the map
+- left: name of class on the left side, Identity Manager, of the map (DPRSchemaClass.Name)
+- right: name of class on the right side, target system, of the map (DPRSchemaClass.Name)
 - direction: direction of data flow, one of _ToTheLeft_, _ToTheRight_, or the default _BothDirections_
 
 

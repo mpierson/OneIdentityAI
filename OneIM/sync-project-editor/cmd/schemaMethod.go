@@ -111,7 +111,7 @@ func newSchemaMethod(
 		UID_DPRSchemaMethod: id,
 		UID_QBMClrType:      clrId,
 		UID_DPRSchemaType:   schemaTypeId,
-		Specials:            oneim.Specials{XObjectKey: objectKey},
+		Specials:            oneim.NewSpecials(objectKey, "sped"),
 		Displayable: Displayable{
 			Name:        &name,
 			DisplayName: &name,

@@ -20,7 +20,6 @@ type DPRSchema struct {
 	FunctionalLevel    int
 	IsLocked           bool
 	IsPartial          bool
-	NameFormat         *string
 	SystemCapabilities *string
 	SystemDisplay      *string
 	SystemId           string
@@ -120,7 +119,7 @@ func insertOneIMSchema(c *cobra.Command, db *sqlx.DB) error {
 	if err != nil {
 		return err
 	}
-	err = AddPropertiesToSchemaType(db, typeId)
+	err = AddDBPropertiesToSchemaType(db, typeId)
 	if err != nil {
 		return err
 	}
@@ -167,12 +166,11 @@ func newSchema(
 		UID_DPRSchema:  id,
 		UID_DPRShell:   shellId,
 		UID_QBMClrType: clrId,
-		Specials: oneim.Specials{
-			XObjectKey: objectKey,
-		},
+		Specials:       oneim.NewSpecials(objectKey, "sped"),
 		Displayable: Displayable{
 			Name:        &name,
 			DisplayName: &name,
+			NameFormat:  &NAME_FORMAT_Identifier,
 		},
 		SystemId:           systemId,
 		SystemType:         &systemType,
@@ -181,9 +179,6 @@ func newSchema(
 		SystemCapabilities: &systemCapabilities,
 		FunctionalLevel:    functionalLevel,
 	}
-
-	nameFormat := "Identifier"
-	t.NameFormat = &nameFormat
 
 	return &t, nil
 }

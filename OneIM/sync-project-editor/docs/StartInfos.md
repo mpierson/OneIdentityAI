@@ -94,9 +94,17 @@ sped -C my_db.yaml start-info --shell 'CCC-19F48527609980498D5E843FF49BB8AD' \
                         --table-name 'Person'
 ```
 
+Parameters
+
+- shell: UID\_DPRShell of synchronization project
+- id: UID\_DPRProjectionStartInfo of the start info object
+- table-name: name of table in Identity Manager schema that is primary target of synchronization, for Human Resource synchronization use _Person_
+- server-name: name of the Identity Manager job server that will perform the synchronization
+
+
 ## Identifying a job server for synchronization
 
-Use the following SQL to identify the name of an appropriate job server for custom connectors:
+Use the following SQL to identify job servers suitable for synchronization using a custom connector:
 
 ```sql
 select Ident_Server from QBMServer s

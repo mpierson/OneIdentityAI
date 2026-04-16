@@ -70,14 +70,16 @@ Add properties to each schema type with the _schema-property insert_ command:
 
 ```bash
 sped -C my_db.yaml schema-property --schema-type-id 'BBE236A6-67B9-4D9D-A49D-89EE5DF2F0E3' \
-        insert --name 'firstName' --data-type string
+        insert --name 'employeeId' --data-type String --is-key true --is-secret false
 ```
 
 Parameters:
 
 - schema-type-id: UID\_DPRSchemaType of the parent type
 - name (n): name of the new schema property
-- data-type: data type of the new property (_string_, _Integer_, _Boolean_, etc)
+- data-type: data type of the new property (_String_, _Integer_, _Boolean_, etc)
+- is-key: true if the property is a key field that uniquely identifies a record for the schema type
+- is-secret: true if values of this property should be treated as secret
 
 
 The schema property name should correspond to the name used in the corresponding system. For example, in the Identity Manager schema, use the column name as the schema property name.
@@ -85,7 +87,7 @@ For custom target systems, the schema property name should correspond to the att
 
 The following schema property data types are supported, shown with corresponding SQL Server column types:
 
-string
+String
 : VARCHAR
 : NVARCHAR
 : NCHAR
