@@ -44,7 +44,8 @@ Use the _workflow-step insert_ command to add a step to a workflow for a given s
 ```bash
 sped -C my_db.yaml workflow-step --workflow-id '74ACD0C3-57AB-4F8B-8586-14F759757C49' \
         insert --name 'Person' \
-               --map-id 'B72BC648-937B-495F-9240-F1E04FDAD276'
+               --map-id 'B72BC648-937B-495F-9240-F1E04FDAD276' \
+               --source-is-authoritative true
 ```
 
 Parameters
@@ -52,9 +53,10 @@ Parameters
 - workflow-id: UID\_DPRProjectionConfig of the parent workflow
 - name: name of the new step
 - map-id: UID\_DPRSystemMap of the schema class map
+- source-is-authoritative: true if the incoming data is authoritative, for example, a human resource system
 
 
-Synchronization actions can be configured for each of these four data comparison scenarios (see Match Sets below):
+Synchronization actions should be configured for one or more of these data comparison scenarios (see Match Sets below):
 
 - objects in both sides of the map are the same, 
 - object exists in the left system but not the right, 

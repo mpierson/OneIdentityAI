@@ -228,6 +228,7 @@ func InsertKeyBasedVirtualProperty(db *sqlx.DB,
 	prop.IsVirtual = true
 	prop.IsAdditional = -1
 	prop.IsReference = -1
+	prop.IsLocked = false
 
 	// internal xml def for serialization bag
 	rst := &ResolutionSchemaTypes{}

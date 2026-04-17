@@ -460,7 +460,7 @@ func runStartInfo(c *cobra.Command, db *sqlx.DB) error {
 	} else if task.Ready2EXE == "DELETE" {
 		// task is complete, check for errors
 		if task.ErrorMessages != nil {
-			fmt.Println("Failed to start sync: \n" + *task.ErrorMessages)
+			fmt.Println("Failed to start sync: " + *task.ErrorMessages)
 			return nil
 		}
 		// otherwise, good to carry on
@@ -490,7 +490,7 @@ func runStartInfo(c *cobra.Command, db *sqlx.DB) error {
 	} else if task.Ready2EXE == "PROCESSING" {
 		fmt.Println(task.UID_Job)
 	} else {
-		fmt.Println(`Failed to start sync: \n%v`, task.ErrorMessages)
+		fmt.Println(fmt.Sprintf(`Synchronization failed: %v`, *task.ErrorMessages))
 		return nil
 	}
 

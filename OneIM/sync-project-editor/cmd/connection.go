@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"bytes"
+	"compress/flate"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
@@ -312,4 +316,36 @@ func GetDefaultTargetSystemConnection(db *sqlx.DB, shellId string) (*DPRSystemCo
 	}
 
 	return nil, nil
+}
+
+// CompressConnectorXML encodes a connector definition XML file for use in an
+// Identity Manager target system connection string (DefinitionXml parameter).
+//
+// The encoding matches .NET's three-step process:
+//  1. Base64-encode the raw XML bytes
+//  2. Compress the Base64 string with raw DEFLATE (equivalent to DeflateStream)
+//  3. Base64-encode the compressed bytes
+//
+// # Claude Code April 2026
+func CompressConnectorXML(xmlPath string) (string, error) {
+	xmlBytes, err := os.ReadFile(xmlPath)
+	if err != nil {
+		return "", fmt.Errorf("reading %s: %w", xmlPath, err)
+	}
+
+	b64 := base64.StdEncoding.EncodeToString(xmlBytes)
+
+	var buf bytes.Buffer
+	w, err := flate.NewWriter(&buf, flate.DefaultCompression)
+	if err != nil {
+		return "", fmt.Errorf("creating deflate writer: %w", err)
+	}
+	if _, err = w.Write([]byte(b64)); err != nil {
+		return "", fmt.Errorf("compressing: %w", err)
+	}
+	if err = w.Close(); err != nil {
+		return "", fmt.Errorf("flushing deflate writer: %w", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }

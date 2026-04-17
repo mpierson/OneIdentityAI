@@ -22,6 +22,10 @@ type DPRProjectionConfig struct {
 	Connections             []string `mapstructure:",omitzero"`
 }
 
+var WORKFLOW_DIRECTION_Inherite = "Inherite"
+var WORKFLOW_DIRECTION_Left = "ToTheLeft"
+var WORKFLOW_DIRECTION_Right = "ToTheRight"
+
 type DPRProjectionConfigHasConnect struct {
 	oneim.Specials
 	UID_DPRProjectionConfig string
@@ -295,4 +299,13 @@ var UpdateWorkflowCmd = CreateUpdateCommand(
 
 func updateWorkflow(c *cobra.Command, db *sqlx.DB) error {
 	return ExecUpdateCommand[DPRProjectionConfig](c, db)
+}
+
+func CountWorkflowSteps(db *sqlx.DB, workflowId string) (int, error) {
+
+	if !IsValidIdOrName(workflowId) {
+		return -1, errors.New("invalid workflow id")
+	}
+	wc := fmt.Sprintf(`UID_DPRProjectionConfig='%s'`, workflowId)
+	return dbx.GetTableCount(db, "DPRProjectionConfigStep", wc)
 }

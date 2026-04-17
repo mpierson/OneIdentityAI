@@ -59,7 +59,7 @@ Parameters
 
 The schema type name should correspond to the name used in the corresponding system. For example, in the Identity Manager schema, use the view or table name as the schema type name.
 
-Each schema requires at least one schema type.
+Each synchronization schema requires at least one schema type.
 
 
 ## Add properties to a schema type
@@ -123,6 +123,8 @@ Parameters:
 
 - id: UID\_DPRSchemaType of the parent type
 
+The _schema-type add-oneim-properties_ command completes silently if successful.
+
 
 ## Add one or more methods to a schema type
 
@@ -156,6 +158,8 @@ sped -C my_db.yaml schema-type --schema-id '9E51EFE9-761C-4D53-8733-9476051262BC
         add-methods --id 'BCBFAD07-4D94-4214-B766-4C8DF84092A6' \
                     --methods "Insert Delete" 
 ```
+
+The _schema-type add-methods_ command completes silently if successful.
 
 For Identity Manager schemas, use the _all_ flag to add all available methods:
 

@@ -23,21 +23,6 @@ Parameters
 - direction: direction of data flow, one of _ToTheLeft_, _ToTheRight_, or the default _BothDirections_
 
 
-SPEd also supports creating a map using schema class names:
-
-```bash
-sped -C my_db.yaml map --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
-        insert-by-name --name 'Person_Employee' \
-                       --left "Person_Master" --right "Employee_Master"
-```
-
-Parameters
-
-- shell: UID\_DPRSHell of the synchronization project
-- left: name of class on the left side, Identity Manager, of the map (DPRSchemaClass.Name)
-- right: name of class on the right side, target system, of the map (DPRSchemaClass.Name)
-- direction: direction of data flow, one of _ToTheLeft_, _ToTheRight_, or the default _BothDirections_
-
 
 ## Adding mapping rules
 
@@ -57,8 +42,9 @@ Parameters
 - right-property: name of the attribute in the right schema
 - direction: mapping direction valid for this rule, one of Inherite, ToTheLeft, ToTheRight, DoNotMap (default is Inherite)
 
+**Note**: data types of the left and right properties must be the same.
 
-Mapping direction notes:
+Mapping directions:
 
 _Inherite_
 : Mapping rule will inherit the direction associated with the parent DPRSystemMap.
@@ -113,6 +99,7 @@ Similar to schema mapping rules, object matching rules define the attribute(s) o
 sped -C my_db.yaml mapping-rule --map-id 'B72BC648-937B-495F-9240-F1E04FDAD276' \
         insert-matching-rule --name "EmployeeIdKey" \
                --left-property "PersonnelNumber" --right-property "EmployeeId" \
+               --add-mapping-rule true
 ```
 
 Parameters
@@ -121,6 +108,7 @@ Parameters
 - name: name of the matching rule
 - left-property: name of the attribute in the left schema
 - right-property: name of the attribute in the right schema
+- add-mapping-rule: if true, a standard mapping rule will be created for the same attributes identified in the matching rule
 
 
 

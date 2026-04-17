@@ -52,7 +52,7 @@ Connection string format for a Powershell connector:
 
 `SystemId=MyConnector;Namespace=com.acme.myconnector;ClassName=MyCustomConnector;CommaSeparatedDLLNames=MyConnector.dll;ConnectionPoolSize=1;DefinitionXml=<compressed xml>;FolderContainingDLLs[V]=CP_Posh_FolderContainingDLLs;[Other parameters required by connector, e.g. host, port, user name, password ...]`
 
-The `[V]` designation implies that the connection parameter will be defined as a system variable.
+The `[V]` designation implies that the connection parameter will be defined as a system variable and is included in the default variable set via SPEd.
 
 Attributes in a typical custom connector connection string:
 

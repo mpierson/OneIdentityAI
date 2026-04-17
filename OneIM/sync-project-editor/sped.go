@@ -99,6 +99,7 @@ func init() {
 	cmd.InsertWorkflowStepCmd.Flags().StringP("match-sets-id", "", "", "id of match set collection (UID_DPRSystemObjectMatchSets")
 	cmd.InsertWorkflowStepCmd.Flags().BoolP("include-default-match-sets", "", true, "include default set of Match Sets")
 	cmd.InsertWorkflowStepCmd.Flags().BoolP("use-default-connections", "", true, "include default connections (Identity Manager + target system)")
+	cmd.InsertWorkflowStepCmd.Flags().BoolP("source-is-authoritative", "", false, "incoming data should be considered authoritative, e.g. HR system")
 	cmd.WorkflowStepCmd.AddCommand(cmd.InsertWorkflowStepCmd)
 	cmd.UpdateWorkflowStepCmd.Flags().StringP("id", "i", "", "workflow step identifier")
 	cmd.UpdateWorkflowStepCmd.MarkFlagRequired("id")
