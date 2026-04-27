@@ -67,35 +67,15 @@ Parameters required for a target system connection:
 
 Additional connection parameters required by connector should be included in the connection string, e.g. host name of server, service account credentials.
 
+### Connector definition XML
 
-Compressing the connector definition XML is a three step process:
+SPEd can be used to encode the connector definition XML for use in the target system connection parameters:
 
-1. connector definition XML is Base64 encoded
-2. Base64 encoded XML is compressed via the .Net _System.IO.Compression.DeflateStream_ class
-3. Compressed bits are once again Base64 encoded
-
-Sample code for encoding connector definition XML:
-
-```Powershell
-# load connector definition XML
-$cxml_str = [System.IO.File]::ReadAllText("/home/mpierson/connector/connector-definition.xml");
-
-
-# base 64 encode XML
-$cxml_bytes = [System.Text.Encoding]::UTF8.GetBytes($cxml_str)
-$cxml_b64 = [System.Convert]::ToBase64String($cxml_bytes)
-
-# compress 
-$ms_out = New-Object System.IO.MemoryStream
-$zs = New-Object System.IO.Compression.DeflateStream($ms_out, [System.IO.Compression.CompressionMode]::Compress)
-$ms_in = New-Object System.IO.StreamWriter($zs, [System.Text.Encoding]::UTF8)
-$ms_in.Write($cxml_b64)
-$ms_in.Flush()
-
-# Base64 encode compressed data
-$z_bytes = $ms_out.ToArray()
-$z_b64 = [System.Convert]::ToBase64String($ms_out.ToArray())
-
-$z_b64
+```bash
+sped connection compress-connector-definition -xml '<PowershellConnectorDefinition Version="1.0" Description="my connector"...'
 ```
+
+Parameters
+
+- xml: connector definition, in XML format
 
