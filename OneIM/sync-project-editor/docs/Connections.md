@@ -8,13 +8,13 @@ To create a connection object for the Identity Manager system:
 
 ```bash
 sped -C my_db.yaml connection --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
-            insert-oneim-connection --connection-string $ONEIM_CONSTRING
+            insert-oneim-connection --parameters $ONEIM_CONSTRING
 ```
 
 Parameters
 
 - shell: UID\_DPRSHell of the synchronization project
-- connection-string: connection string for the Identity Manager database
+- parameters: connection parameters required by Identity Manager
 
 Identity Manager connection strings for synchronization typically take the form:
 
@@ -31,6 +31,7 @@ Attributes in a typical Identity Manager connection string:
 - _password_: service account password
 - _pooling_: true if the SQL Server driver should pool connections; should be `False`
 
+**Note**: all attributes listed above are mandantory.
 
 ## Target system connection
 
@@ -38,23 +39,23 @@ To create a connection object for the target system:
 
 ```bash
 sped -C my_db.yaml connection --shell '4A82024A-2211-4D36-96CB-9C078B1E5E93' \
-        insert-target-system-connection --connection-string $SYSTEM_CONSTRING
+        insert-target-system-connection --parameters $MY_SYSTEM_PARAMS
 ```
 
 Parameters
 
 - shell: UID\_DPRSHell of the synchronization project
-- connection-string: system-specific connection string for the target system
+- parameters: system-specific connection parameters for the target system
 
-The connection string will be passed to the target system connector at runtime, and typically contains host connection details.  For custom connectors, the connection string also contains a compressed version of the XML connector definition.
+The connection parameters will be passed to the target system connector at runtime, and typically contains host connection details.  For custom connectors, the parameters also contains a compressed version of the XML connector definition.
 
-Connection string format for a Powershell connector:
+Format for a Powershell connector:
 
 `SystemId=MyConnector;Namespace=com.acme.myconnector;ClassName=MyCustomConnector;CommaSeparatedDLLNames=MyConnector.dll;ConnectionPoolSize=1;DefinitionXml=<compressed xml>;FolderContainingDLLs[V]=CP_Posh_FolderContainingDLLs;[Other parameters required by connector, e.g. host, port, user name, password ...]`
 
 The `[V]` designation implies that the connection parameter will be defined as a system variable and is included in the default variable set via SPEd.
 
-Attributes in a typical custom connector connection string:
+Parameters required for a target system connection:
 
 - _SystemId_: unique identifier of the target system, e.g. FQDN of service
 - _ClassName_: name of the class that implements `ois.oneim.ConnectorBase.ConnectorBase.ConnectorInterface`

@@ -139,20 +139,22 @@ func init() {
 	cmd.InsertConnectionCmd.MarkFlagRequired("name")
 	cmd.InsertConnectionCmd.Flags().StringP("type", "t", "", "MainConnection or ConnectedSystemConnection")
 	cmd.InsertConnectionCmd.Flags().StringP("connector-type", "", "", "connector type identifier, i.e. VI.Xxxx.Xxxx")
-	cmd.InsertConnectionCmd.Flags().StringP("connection-string", "c", "", "system-dependent connection string")
+	cmd.InsertConnectionCmd.Flags().StringP("parameters", "", "", "system-dependent parameters, delimited by semi-colon")
 	cmd.InsertConnectionCmd.Flags().StringP("schema-id", "", "", "schema associated with connection (UID_DPRSchema)")
 	cmd.InsertConnectionCmd.MarkFlagRequired("schema-id")
-	cmd.InsertOneIMConnectionCmd.Flags().StringP("connection-string", "c", "", "database connection string")
+	cmd.InsertOneIMConnectionCmd.Flags().StringP("parameters", "", "", "Identity Manager connection parameters, delimited by semi-colons")
 	cmd.ConnectionCmd.AddCommand(cmd.InsertOneIMConnectionCmd)
 	cmd.InsertTargetSystemConnectionCmd.Flags().StringP("connector-type", "c", "VI.Projector.Powershell.PoshConnectorDescriptor", "connector type identifier, i.e. VI.Xxxx.Xxxx")
-	cmd.InsertTargetSystemConnectionCmd.Flags().StringP("connection-string", "", "", "system-dependent connection string")
-	cmd.InsertTargetSystemConnectionCmd.Flags().StringP("connection-string-type", "", "", "connector string type identifier, i.e. VI.Xxxx.Xxxx")
+	cmd.InsertTargetSystemConnectionCmd.Flags().StringP("parameters", "", "", "system-dependent connection parameters, delimited by semi-colon")
 	cmd.ConnectionCmd.AddCommand(cmd.InsertTargetSystemConnectionCmd)
 	cmd.UpdateConnectionCmd.Flags().StringP("id", "i", "", "sync Connection identifier")
 	cmd.UpdateConnectionCmd.MarkFlagRequired("id")
 	cmd.UpdateConnectionCmd.Flags().StringP("content", "c", "", "JSON content containing updated fields")
 	cmd.UpdateConnectionCmd.MarkFlagRequired("content")
 	cmd.ConnectionCmd.AddCommand(cmd.UpdateConnectionCmd)
+	cmd.CompressConnectorDefinitionCmd.Flags().StringP("xml", "x", "", "XML content to be compressed")
+	cmd.CompressConnectorDefinitionCmd.MarkFlagRequired("xml")
+	cmd.ConnectionCmd.AddCommand(cmd.CompressConnectorDefinitionCmd)
 
 	cmd.VariableSetCmd.PersistentFlags().StringP("shell", "s", "", "sync project")
 	rootCmd.AddCommand(cmd.VariableSetCmd)
@@ -289,14 +291,6 @@ func init() {
 	cmd.InsertSystemMapCmd.MarkFlagRequired("right-schema-class-id")
 	cmd.InsertSystemMapCmd.Flags().StringP("direction", "", "BothDirections", "One of ToTheLeft, ToTheRight, or BothDirections")
 	cmd.SystemMapCmd.AddCommand(cmd.InsertSystemMapCmd)
-	cmd.InsertSystemMapByNameCmd.Flags().StringP("name", "n", "", "map name")
-	cmd.InsertSystemMapByNameCmd.MarkFlagRequired("name")
-	cmd.InsertSystemMapByNameCmd.Flags().StringP("left", "l", "", "name of schema class on left side of map")
-	cmd.InsertSystemMapByNameCmd.MarkFlagRequired("left")
-	cmd.InsertSystemMapByNameCmd.Flags().StringP("right", "r", "", "name of schema class on right side of map")
-	cmd.InsertSystemMapByNameCmd.MarkFlagRequired("right")
-	cmd.InsertSystemMapByNameCmd.Flags().StringP("direction", "", "BothDirections", "One of ToTheLeft, ToTheRight, or BothDirections")
-	cmd.SystemMapCmd.AddCommand(cmd.InsertSystemMapByNameCmd)
 	cmd.UpdateSystemMapCmd.Flags().StringP("id", "i", "", "map identifier")
 	cmd.UpdateSystemMapCmd.MarkFlagRequired("id")
 	cmd.UpdateSystemMapCmd.Flags().StringP("content", "c", "", "JSON content containing updated fields")
@@ -474,6 +468,11 @@ func initConfig() {
 }
 
 func setupDBConnection(c *cobra.Command, args []string) {
+
+	if "compress-connector-definition" == c.CalledAs() {
+		return
+	}
+
 	//host, _ := c.Flags().GetString("host")
 	host := viper.GetString("host")
 	port := viper.GetInt("port")

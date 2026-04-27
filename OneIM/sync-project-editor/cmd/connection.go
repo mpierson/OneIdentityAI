@@ -130,7 +130,7 @@ func newConnection_cmd(
 	}
 
 	// connection string is optional?
-	conString, _ := c.Flags().GetString("connection-string")
+	conString, _ := c.Flags().GetString("parameters")
 
 	return newConnection(db,
 		shellId, schemaId,
@@ -219,7 +219,7 @@ func newOneIMConnection(
 	}
 
 	// connection string is optional?
-	conString, _ := c.Flags().GetString("connection-string")
+	conString, _ := c.Flags().GetString("parameters")
 
 	// lookup primary OneIM schema in given shell
 	schema, err := GetOneIMSchema(db, shellId)
@@ -271,8 +271,8 @@ func newTargetSystemConnection(
 	}
 
 	// connection string is optional?
-	conString, _ := c.Flags().GetString("connection-string")
-	conStringType, _ := c.Flags().GetString("connection-string-type")
+	conString, _ := c.Flags().GetString("parameters")
+	conStringType := ""
 
 	return newConnection(db,
 		shellId, schema.UID_DPRSchema,
@@ -318,6 +318,17 @@ func GetDefaultTargetSystemConnection(db *sqlx.DB, shellId string) (*DPRSystemCo
 	return nil, nil
 }
 
+// ----- connector XML definition ------------------------------------
+
+func CompressConnectorXML(xmlPath string) (string, error) {
+	xmlBytes, err := os.ReadFile(xmlPath)
+	if err != nil {
+		return "", fmt.Errorf("reading %s: %w", xmlPath, err)
+	}
+
+	return CompressConnectorXMLString(string(xmlBytes))
+}
+
 // CompressConnectorXML encodes a connector definition XML file for use in an
 // Identity Manager target system connection string (DefinitionXml parameter).
 //
@@ -327,13 +338,9 @@ func GetDefaultTargetSystemConnection(db *sqlx.DB, shellId string) (*DPRSystemCo
 //  3. Base64-encode the compressed bytes
 //
 // # Claude Code April 2026
-func CompressConnectorXML(xmlPath string) (string, error) {
-	xmlBytes, err := os.ReadFile(xmlPath)
-	if err != nil {
-		return "", fmt.Errorf("reading %s: %w", xmlPath, err)
-	}
+func CompressConnectorXMLString(xmlContent string) (string, error) {
 
-	b64 := base64.StdEncoding.EncodeToString(xmlBytes)
+	b64 := base64.StdEncoding.EncodeToString([]byte(xmlContent))
 
 	var buf bytes.Buffer
 	w, err := flate.NewWriter(&buf, flate.DefaultCompression)
@@ -348,4 +355,31 @@ func CompressConnectorXML(xmlPath string) (string, error) {
 	}
 
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
+}
+
+var CompressConnectorDefinitionCmd = createCommand(
+	"compress-connector-definition",
+	"compress the given connector definition xml, suitable for synchronization connection parameter string",
+	`Returns a compressed and Base64 encoded version of given input string, according to requirements for connector definition XML embedded in a synchronization project connection parameter string.`,
+	nil,
+	compressDefinitionCmd,
+)
+
+func compressDefinitionCmd(c *cobra.Command, args []string) error {
+	xmlString, err := c.Flags().GetString("xml")
+	if err != nil {
+		return err
+	} else if len(xmlString) == 0 {
+		return errors.New("missing xml content")
+	}
+
+	compressedXml, err := CompressConnectorXMLString(xmlString)
+	if err != nil {
+		return nil
+	} else if len(compressedXml) == 0 {
+		return errors.New("failed to compress xml")
+	}
+
+	fmt.Println(compressedXml)
+	return nil
 }

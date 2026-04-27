@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"pso.oneidentity.com/sped/oneim"
+	"pso.oneidentity.com/sped/oneim/dbx"
 )
 
 type DPRSchemaMethod struct {
@@ -77,8 +78,12 @@ func insertSchemaMethod(c *cobra.Command, db *sqlx.DB) error {
 	clr, _ := c.Flags().GetString("clr-name")
 
 	if len(clr) == 0 {
-		schemaId, _ := c.Flags().GetString("schema-id")
-		clr, _ = GetCLRForTarget(db, schemaId,
+		schemaTypeId, _ := c.Flags().GetString("schema-type-id")
+		schemaType, err := dbx.GetStructSingleton[DPRSchemaType](db, schemaTypeId)
+		if err != nil {
+			return err
+		}
+		clr, _ = GetCLRForTarget(db, schemaType.UID_DPRSchema,
 			"VI.Projector.Database.DatabaseSchemaMethod", "VI.Projector.Powershell.Schema.PoshSchemaMethod")
 	}
 	return ExecInsertCommand[DPRSchemaMethod](c, db, clr, newSchemaMethodCmd)

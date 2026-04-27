@@ -134,7 +134,7 @@ func insertFile(c *cobra.Command, db *sqlx.DB) error {
 		return err
 	}
 
-	fmt.Println("job server update complete, now verifiying")
+	fmt.Println("job server update running, verification will start shortly")
 
 	// ---- trigger module info refresh -----
 

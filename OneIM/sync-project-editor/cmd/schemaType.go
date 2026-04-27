@@ -161,11 +161,14 @@ func addMethodsToSchemaType(c *cobra.Command, db *sqlx.DB) error {
 	if err != nil {
 		return err
 	}
-
 	clr, _ := c.Flags().GetString("clr-name")
 	if len(clr) == 0 {
-		schemaId, _ := c.Flags().GetString("schema-id")
-		clr, _ = GetCLRForTarget(db, schemaId,
+		schemaType, err := dbx.GetStructSingleton[DPRSchemaType](db, id)
+		if err != nil {
+			return err
+		}
+
+		clr, _ = GetCLRForTarget(db, schemaType.UID_DPRSchema,
 			"VI.Projector.Database.DatabaseSchemaMethod", "VI.Projector.Powershell.Schema.PoshSchemaMethod")
 	}
 	if len(clr) == 0 {

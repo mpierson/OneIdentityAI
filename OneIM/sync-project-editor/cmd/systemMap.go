@@ -147,67 +147,6 @@ func newSystemMap(
 	return &t, nil
 }
 
-var InsertSystemMapByNameCmd = CreateBaseCommand(
-	"insert-by-name",
-	"create a new synchronization map",
-	`Create a new schema class attribute map (DPRSystemMap), referencing classes by name, and return the UID_DPRSystemMap of the new map.`,
-	insertMapByName,
-)
-
-func insertMapByName(c *cobra.Command, db *sqlx.DB) error {
-	return ExecInsertCommand[DPRSystemMap](c, db, "VI.Projector.Mapping.SystemMap", newMapByName_cmd)
-}
-
-func newMapByName_cmd(
-	c *cobra.Command, db *sqlx.DB,
-	id string, objectKey string, name string,
-	clrId string,
-) (*DPRSystemMap, error) {
-
-	shellId, _ := c.Flags().GetString("shell")
-	if len(shellId) == 0 {
-		return nil, errors.New("shell id required")
-	}
-
-	leftClassName, _ := c.Flags().GetString("left")
-	if len(leftClassName) == 0 {
-		return nil, errors.New("left class name required")
-	}
-	lSchema, err := GetOneIMSchema(db, shellId)
-	if err != nil {
-		return nil, err
-	}
-	lSchemaClass, err := GetSchemaClassByName(db, shellId, lSchema.UID_DPRSchema, leftClassName)
-	if err != nil {
-		return nil, err
-	}
-
-	rightClassName, _ := c.Flags().GetString("right")
-	if len(rightClassName) == 0 {
-		return nil, errors.New("right class name required")
-	}
-	rSchema, err := GetTargetSystemSchema(db, shellId)
-	if err != nil {
-		return nil, err
-	}
-	rSchemaClass, err := GetSchemaClassByName(db, shellId, rSchema.UID_DPRSchema, rightClassName)
-	if err != nil {
-		return nil, err
-	}
-
-	mapDirection, _ := c.Flags().GetString("direction")
-	if len(mapDirection) == 0 {
-		return nil, errors.New("specify a map direction")
-	}
-
-	return newSystemMap(db,
-		shellId,
-		id, objectKey, name,
-		lSchemaClass.UID_DPRSchemaClass, rSchemaClass.UID_DPRSchemaClass, mapDirection,
-		clrId)
-
-}
-
 var UpdateSystemMapCmd = CreateUpdateCommand(
 	"update an existing synchronization map",
 	`Update attributes of a sync project map (DPRSystemMap).`,
