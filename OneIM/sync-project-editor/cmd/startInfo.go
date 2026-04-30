@@ -490,7 +490,7 @@ func runStartInfo(c *cobra.Command, db *sqlx.DB) error {
 	} else if task.Ready2EXE == "PROCESSING" {
 		fmt.Println(task.UID_Job)
 	} else {
-		fmt.Println(fmt.Sprintf(`Synchronization failed: %v`, *task.ErrorMessages))
+		fmt.Println(fmt.Sprintf(`Synchronization failed: %v`, task.ErrorMessages))
 		return nil
 	}
 

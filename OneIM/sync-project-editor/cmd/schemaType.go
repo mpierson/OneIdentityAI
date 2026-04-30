@@ -126,10 +126,17 @@ func newSchemaType(
 	return &t, nil
 }
 
-func AddTypeToSchema(db *sqlx.DB, schemaId string, typeName string, clr string) (string, error) {
+func AddTypeToSchema(db *sqlx.DB, schemaId string, typeName string, clr string, updater func(*sqlx.DB, *DPRSchemaType) error) (string, error) {
 
 	newFn := func(db1 *sqlx.DB, id string, objectKey string, name string, clrId string) (*DPRSchemaType, error) {
-		return newSchemaType(db1, id, objectKey, name, clrId, schemaId)
+		t, err := newSchemaType(db1, id, objectKey, name, clrId, schemaId)
+		if err != nil {
+			return t, err
+		} else if updater != nil {
+			err = updater(db, t)
+		}
+
+		return t, err
 	}
 
 	_, id, err := InsertNewDPRObject(db, typeName, clr, newFn)

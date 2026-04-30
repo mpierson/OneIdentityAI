@@ -115,7 +115,15 @@ func insertOneIMSchema(c *cobra.Command, db *sqlx.DB) error {
 	}
 
 	// add standard OneIM revision table
-	typeId, err := AddTypeToSchema(db, schemaId, "QBMVTableRevision", "VI.Projector.Database.DatabaseSchemaType")
+	updater := func(db *sqlx.DB, schemaType *DPRSchemaType) error {
+		schemaType.IsLocked = true
+		schemaType.IsReadOnly = true
+		schemaType.ShrinkLock = 1
+		metaData := "ModUidDef=1"
+		schemaType.MetaData = &metaData
+		return nil
+	}
+	typeId, err := AddTypeToSchema(db, schemaId, "QBMVTableRevision", "VI.Projector.Database.DatabaseSchemaType", updater)
 	if err != nil {
 		return err
 	}
