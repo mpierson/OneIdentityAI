@@ -107,7 +107,12 @@ func insertOneIMSchema(c *cobra.Command, db *sqlx.DB) error {
 	var schemaId string
 	newFn := func(c *cobra.Command, db *sqlx.DB, id string, objectKey string, name string, clrId string) (*DPRSchema, error) {
 		schemaId = id
-		return newOneIMSchema(c, db, id, objectKey, name, clrId)
+		t, schemaErr := newOneIMSchema(c, db, id, objectKey, name, clrId)
+		if schemaErr != nil {
+			return t, err
+		}
+		t.IsPartial = true
+		return t, nil
 	}
 	err := ExecInsertCommand[DPRSchema](c, db, "VI.Projector.Database.DatabaseSchema", newFn)
 	if err != nil {

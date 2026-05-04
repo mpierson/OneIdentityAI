@@ -77,7 +77,7 @@ Parameters
 
 - id: UID\_DPRProjectionConfigStep of the target step
 - side: specify the map side on which the action will apply (Left: Identity Manager, Right: target system)
-- method: name of method (one of: Insert, Update, Delete, MarkAsOutstanding, UnMarkAsOutstanding)
+- method: name of method (one of: Insert, Update, Delete, MarkAsOutstanding, UnmarkAsOutstanding)
 - match-set: name of comparison scenario (see below)
 
 Valid match set scenarios:
@@ -95,6 +95,6 @@ Typical actions and match set scenario combinations:
 | DifferenceLeftToRight          | Left (Identity Manager) | Insert                     |
 | DifferenceRightToLeft          | Left (Identity Manager) | MarkAsOutstanding          |
 | IntersectionWithoutDifferences | n/a                     | n/a                        |
-| IntersectionWithDifferences    | Left (Identity Manager) | Update, UnMarkAsOutstanding |
+| IntersectionWithDifferences    | Left (Identity Manager) | Update, UnmarkAsOutstanding |
 
 

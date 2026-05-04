@@ -110,7 +110,7 @@ func init() {
 	cmd.AddSchemaMethodCmd.MarkFlagRequired("id")
 	cmd.AddSchemaMethodCmd.Flags().StringP("side", "s", "", "apply method to Left or Right side schema")
 	cmd.AddSchemaMethodCmd.MarkFlagRequired("id")
-	cmd.AddSchemaMethodCmd.Flags().StringP("method", "", "", "method name (Insert, Update, Delete, MarkAsOutstanding, UnMarkAsOutstanding)")
+	cmd.AddSchemaMethodCmd.Flags().StringP("method", "", "", "method name (Insert, Update, Delete, MarkAsOutstanding, UnmarkAsOutstanding)")
 	cmd.AddSchemaMethodCmd.MarkFlagRequired("method")
 	cmd.AddSchemaMethodCmd.Flags().StringP("match-set", "", "", "match set name (DifferenceLeftToRight, DifferenceRightToLeft, IntersectionWithDifferences, IntersectionWithoutDifferences)")
 	cmd.AddSchemaMethodCmd.MarkFlagRequired("match-set")
