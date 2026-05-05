@@ -226,16 +226,70 @@ var AddOneIMSchemaPropertiesCmd = createDPRCommand(
 	"add all columns of the corresponding OneIM table to a schema type",
 	`Add OneIM columns to schema type (DPRSchemaProperty).`,
 	[]string{"id"},
-	addDBPropertiesToSchemaTypeCmd,
+	addOneIMPropertiesToSchemaTypeCmd,
 )
 
-func addDBPropertiesToSchemaTypeCmd(c *cobra.Command, db *sqlx.DB) error {
+func addOneIMPropertiesToSchemaTypeCmd(c *cobra.Command, db *sqlx.DB) error {
 
 	id, err := c.Flags().GetString("id")
 	if err != nil {
 		return err
 	}
-	return AddDBPropertiesToSchemaType(db, id)
+	return AddOneIMPropertiesToSchemaType(db, id)
+}
+
+func AddOneIMPropertiesToSchemaType(db *sqlx.DB, schemaTypeId string) error {
+
+	schemaType, err := dbx.GetStructSingleton[DPRSchemaType](db, schemaTypeId)
+	if err != nil {
+		return err
+	}
+
+	// current props, to avoid dupes
+	currentProps, err := GetAllSchemaProperties(db, schemaTypeId)
+	if err != nil {
+		return err
+	}
+	// extract slice of property names
+	currentPropNames := make([]string, len(currentProps))
+	for i, p := range currentProps {
+		currentPropNames[i] = *p.Name
+	}
+
+	// DialogTable for schema type
+	t, err := GetDialogTable(db, *schemaType.Name)
+	if err != nil {
+		return err
+	}
+
+	cols, err := GetDialogColumnsForTable(db, t.UID_DialogTable)
+	if err != nil {
+		return err
+	}
+	for _, col := range cols {
+		if !slices.Contains(currentPropNames, col.ColumnName) {
+			err = addOneIMPropertyToSchemaType(db, schemaTypeId, &col)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+func addOneIMPropertyToSchemaType(db *sqlx.DB, schemaTypeId string, col *DialogColumn) error {
+
+	t, err := NewPropertyForDialogColumn(db, schemaTypeId, col)
+	if err != nil {
+		return err
+	}
+
+	err = InsertDPRObject[DPRSchemaProperty](db, t)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func AddDBPropertiesToSchemaType(db *sqlx.DB, schemaTypeId string) error {

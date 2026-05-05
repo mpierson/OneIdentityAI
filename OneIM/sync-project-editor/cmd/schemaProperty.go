@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
@@ -28,8 +29,29 @@ type DPRSchemaProperty struct {
 	UID_BaseDPRSchemaProperty *string
 	SerializationBag          *string
 	DataType                  *string
+	ValueFormat               *string
+	MetaData                  *string
+	AccessConstraint          *string
+	MaximumLength             int
 	SchemaType                string `mapstructure:",omitzero"`
 }
+
+var SQL_COLUMN_TYPE_MAP = map[string]string{
+	"VARCHAR":   "string",
+	"NVARCHAR":  "string",
+	"NCHAR":     "string",
+	"CHAR":      "string",
+	"VARBINARY": "Binary",
+	"INT":       "Integer",
+	"BIT":       "Integer",
+	"FLOAT":     "Float",
+	"DATETIME":  "DateTime",
+	"BOOL":      "Boolean",
+}
+
+var VALUE_FORMAT_UID = "Uid"
+var ACCESS_CONSTRAINT_ReadOnly = "ReadOnly"
+var ACCESS_CONSTRAINT_ReadAndInsertOnly = "ReadAndInsertOnly"
 
 var SchemaPropertyCmd = CreateBaseCommand(
 	"schema-property",
@@ -263,4 +285,58 @@ func GetSchemaProperty(db *sqlx.DB, schemaTypeId string, name string) (*DPRSchem
 	wc := fmt.Sprintf("UID_DPRSchemaType='%s' and Name='%s'", schemaTypeId, name)
 	t, err := dbx.GetStructSingletonByWC[DPRSchemaProperty](db, wc)
 	return &t, err
+}
+
+func NewPropertyForDialogColumn(db *sqlx.DB, schemaTypeId string, column *DialogColumn) (*DPRSchemaProperty, error) {
+
+	id, objectKey, err := NewDPRKeys[DPRSchemaProperty](db)
+	if err != nil {
+		return nil, err
+	}
+
+	clrId, err := GetClrId(db, "VI.Projector.Database.DatabaseSchemaProperty")
+	if err != nil {
+		return nil, err
+	}
+
+	colType := ""
+	if mappedType, mapContainsKey := SQL_COLUMN_TYPE_MAP[strings.ToUpper(column.SchemaDataType)]; mapContainsKey {
+		colType = mappedType
+	} else {
+		return nil, errors.New("unmapped SQL type: " + column.ColumnName)
+	}
+
+	t, err := newSchemaProperty(schemaTypeId, id, objectKey, column.ColumnName, colType, clrId)
+
+	if strings.HasPrefix(column.ColumnName, "X") {
+		t.AccessConstraint = &ACCESS_CONSTRAINT_ReadOnly
+	}
+
+	if column.IsPKMember {
+		t.IsUniqueKey = 1
+		metaData := "IsPK=1"
+		t.MetaData = &metaData
+		t.AccessConstraint = &ACCESS_CONSTRAINT_ReadAndInsertOnly
+	}
+
+	if column.IsForeignKey {
+		t.IsReference = 1
+	}
+	if column.IsCrypted {
+		t.IsSecretValue = 1
+	}
+	if column.IsUID {
+		t.ValueFormat = &VALUE_FORMAT_UID
+	}
+	if column.Caption != nil {
+		t.DisplayName = column.Caption
+	}
+
+	if column.Commentary != nil {
+		t.Description = column.Commentary
+	}
+
+	t.MaximumLength = column.SchemaDataLen
+
+	return t, err
 }

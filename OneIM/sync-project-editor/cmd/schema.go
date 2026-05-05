@@ -109,7 +109,7 @@ func insertOneIMSchema(c *cobra.Command, db *sqlx.DB) error {
 		schemaId = id
 		t, schemaErr := newOneIMSchema(c, db, id, objectKey, name, clrId)
 		if schemaErr != nil {
-			return t, err
+			return t, schemaErr
 		}
 		t.IsPartial = true
 		return t, nil
