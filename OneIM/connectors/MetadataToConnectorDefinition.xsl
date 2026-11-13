@@ -143,8 +143,12 @@
                    [parameter(Mandatory =]]></xsl:text>
      <xsl:value-of select="if (@required='true') then '$true' else '$false'" />
      <xsl:text><![CDATA[, ValueFromPipelineByPropertyName =$true)]
-                   [ValidateNotNullOrEmpty()]
      ]]></xsl:text>
+     <!-- optional parameters may be passed empty -->
+     <xsl:if test="@required='true'">
+         <xsl:text><![CDATA[              [ValidateNotNullOrEmpty()]
+     ]]></xsl:text>
+     </xsl:if>
      <xsl:value-of select="concat(
                     '[', ois:get-powershell-type(@type), ']$', @name,
                     if ( position() &lt; last() ) then ',' else ''
@@ -334,6 +338,7 @@
          <xsl:attribute name="DataType" select="ois:get-powershell-type(@type)" />
          <xsl:attribute name="IsUniqueKey" select="if ( @name = 'Id' ) then 'true' else 'false'" />
          <xsl:attribute name="IsMandatory" select="ois:get-boolean(@required)" />
+         <xsl:if test="(normalize-space(../@updateMethod) != '') or ((@name='Id') and ((normalize-space(../@getMethod) != '') or (normalize-space(../@deleteMethod) != '')))">
          <CommandMappings>
              <xsl:if test="@name = 'Id'">
                  <xsl:if test="../@getMethod != ''">
@@ -349,13 +354,14 @@
                  </Map>
              </xsl:if>
              </xsl:if>
-             <xsl:if test="../@updateMethod != ''">
+                 <xsl:if test="normalize-space(../@updateMethod) != ''">
              <Map>
                  <xsl:attribute name="Parameter" select="@name" />
                  <xsl:attribute name="ToCommand" select="../@updateMethod" />
              </Map>
              </xsl:if>
          </CommandMappings>
+         </xsl:if>
          <ReturnBindings>
              <xsl:if test="@includedInList = 'True' and ../@listMethod != ''">
                  <Bind>
