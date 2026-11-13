@@ -24,6 +24,8 @@ public class AttributeDef {
     public required string Type { get; set; }
     public string? Description { get; set; }
     public bool Required {get; set;}
+    // the class's listMethod returns this attribute (metadata includedInList); the definition binds it to the listing
+    public bool IncludedInList {get; set;} = true;
 }
 
 // Metadata for a data type supported by connector
