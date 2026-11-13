@@ -4,6 +4,8 @@ The custom connector library should include a public class that implements _ois.
 
 For best results, a single, .Net 8 compliant DLL should be created.
 
+The compiled DLL file MUST include version information; the first version of a connector DLL should be version _0.1_.
+
 ## Connector Configuration
 
 The _Configure_ method is used to setup target system connection details.  Configuration parameters are passed in key/value pairs.   The connector's static _ConfigParameters()_ should return metadata for the parameters to be passed to the _Configure()_ method.

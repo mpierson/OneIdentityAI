@@ -16,7 +16,8 @@ Sample metadata, in XML format:
 <Connector className="MyConnector" namespace="ois.oneim">
   <Description>Sample connector library for xyz target system</Description>
 
-  <!-- Configuration section includes one Parameter element for each parameter to be passed to the Configure method of the connector.  e.g. host name, service account credentials.
+  <!-- Configuration section includes one Parameter element for each parameter to be passed to the Configure method of the connector.  e.g. host name, service account credentials.  To support calls by Powershell, boolean parameters should be avoided.
+  -->
   <Configuration>
     <Parameter name="connected_host" type="string">
       <Description>Hostname or IP address of connected system</Description>
@@ -26,7 +27,7 @@ Sample metadata, in XML format:
 
   <!-- 
      A Class element is required for each data type in the connected system that is supported by the connector. The _listMethod_, _createMethod_, _getMethod_, _updateMethod_, and _deleteMethod_ attributes indicate the name of the corresponding method in the connector. 
-     Each attribute of the data type is represented by an Attribute element, including XML attributes for the name, type, and if a value is required by the connected system.  If the attribute must not be empty when creating or updating the connected system, the XML attribute _required_ should be _True_.
+     Each attribute of the data type is represented by an Attribute element, including XML attributes for the name, type, and if a value is required by the connected system.  If the attribute must not be empty when creating or updating the connected system, the XML attribute _required_ should be _True_. If the attribute is returned by the listMethod, then the XML attribute _includedInList_ should be _True_. 
   -->
   
   <Classes>
@@ -36,7 +37,8 @@ Sample metadata, in XML format:
            getMethod="GetEmployee"
            updateMethod="UpdateEmployee"
            deleteMethod="DeleteEmployee">
-      <Attribute name="Id" type="string" required="False" />
+      <Attribute name="Id" type="string" required="True" includedInList="True" />
+      <Attribute name="FirstName" type="string" required="True" includedInList="False" />
       ...
     </Class>
   </Classes>

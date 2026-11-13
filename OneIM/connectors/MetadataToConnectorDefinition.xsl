@@ -357,7 +357,7 @@
              </xsl:if>
          </CommandMappings>
          <ReturnBindings>
-             <xsl:if test="@name = 'Id' and ../@listMethod != ''">
+             <xsl:if test="@includedInList = 'True' and ../@listMethod != ''">
                  <Bind>
                      <xsl:attribute name="Path" select="@name" />
                      <xsl:attribute name="CommandResultOf" select="../@listMethod" />
